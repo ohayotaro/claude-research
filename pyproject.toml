@@ -1,7 +1,7 @@
 [project]
 name = "research-project"
 version = "0.0.1"
-description = "Research project scaffolded by claude-research-orchestrator. Replace this description via /init-research."
+description = "Research project scaffolded by claude-research. Replace this description via /init-research."
 requires-python = ">=3.12"
 dependencies = [
     "numpy>=2.0",

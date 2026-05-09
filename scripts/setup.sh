@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Setup script for claude-research-orchestrator.
+# Setup script for claude-research.
 # Detects optional CLI partners (codex, gemini) and bootstraps the Python env.
 # Idempotent: safe to run multiple times.
 
@@ -13,7 +13,7 @@ warn() { printf "\033[33m[warn]\033[0m %s\n" "$*"; }
 ok()   { printf "\033[32m[ok]\033[0m %s\n" "$*"; }
 err()  { printf "\033[31m[err]\033[0m %s\n" "$*" >&2; }
 
-bold "claude-research-orchestrator setup"
+bold "claude-research setup"
 echo
 
 # --- uv ---------------------------------------------------------------

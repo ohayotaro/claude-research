@@ -30,7 +30,7 @@ if [[ -z "$SOURCE" ]]; then
     exit 2
 fi
 if [[ ! -d "$SOURCE/.claude" ]]; then
-    err "$SOURCE does not look like a claude-research-orchestrator checkout (no .claude/)."
+    err "$SOURCE does not look like a claude-research checkout (no .claude/)."
     exit 2
 fi
 if [[ ! -f "$SOURCE/CLAUDE.md" ]]; then

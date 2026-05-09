@@ -20,7 +20,7 @@ Install prerequisites first (see [Prerequisites](#prerequisites)). Then, in your
 
 ```bash
 cd /path/to/your-project
-git clone --depth 1 https://github.com/ohayotaro/claude-research-orchestrator.git .starter \
+git clone --depth 1 https://github.com/ohayotaro/claude-research.git .starter \
   && cp -r .starter/.claude .starter/.codex .starter/.gemini .starter/CLAUDE.md \
         .starter/scripts .starter/pyproject.toml .starter/.gitignore . \
   && rm -rf .starter
@@ -174,7 +174,7 @@ Run `scripts/update.sh` from your project root with a path to a fresh template c
 
 ```bash
 # First time only — clone the template into a sibling directory
-git clone https://github.com/ohayotaro/claude-research-orchestrator.git ../template
+git clone https://github.com/ohayotaro/claude-research.git ../template
 
 # Subsequent updates — pull then overlay
 git -C ../template pull
