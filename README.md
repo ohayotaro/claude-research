@@ -4,7 +4,7 @@
 
 A field-agnostic research orchestrator template. Claude Code (Opus) coordinates a small team of specialized agents and external CLI partners (Codex, Gemini) across the full research lifecycle:
 
-> **literature review → gap identification → hypothesis generation → experiment design → script-based verification → results analysis → discussion → paper writing → peer review → revision**
+> **literature review → gap identification → hypothesis generation → experiment design → script-based verification → results analysis → figure review → discussion → paper writing → peer review → revision → submission packaging → archival release**
 
 ## Philosophy
 
@@ -86,7 +86,7 @@ bash scripts/update.sh --source ../template
 | `CLAUDE.md` Zone C | **保全**（退避 → 復元） | `/checkpoint` で蓄積されたセッション進捗（current_phase, last_run_id, next_action 等） |
 | `CLAUDE.md` Zone A | 上書き（テンプレ更新を反映） | 不変ルール（テンプレ層） |
 | `.claude/logs/` | **保全**（rsync exclude） | CLI 呼出履歴、`/review-script` レビュー、`/lint` 結果、debug 報告 |
-| `.claude/agents/`, `.claude/skills/`, `.claude/hooks/`, `.claude/rules/`, `.claude/*.json` | 上書き（rsync --delete） | テンプレ層 — 改良はテンプレ側に push する設計 |
+| `.claude/agents/`, `.claude/skills/`, `.claude/hooks/`, `.claude/rules/`, `.claude/templates/`, `.claude/*.json` | 上書き（rsync --delete） | テンプレ層 — 改良はテンプレ側に push する設計 |
 | `.codex/AGENTS.md`, `.gemini/GEMINI.md` | 上書き | テンプレ層 |
 | `scripts/` | 上書き（self-bootstrap 含む） | テンプレ層 |
 
@@ -99,6 +99,8 @@ bash scripts/setup.sh        # 依存に変更があれば反映
 git status                    # 何が変わったか確認
 git add -A && git commit -m "Sync template @ <commit-sha>"
 ```
+
+> **重要**: テンプレ更新で agents / skills / hooks / settings.json が変わった場合、Claude Code セッションの**再起動が必要**です（agent / hook 定義はセッション起動時にロードされるため）。`/exit` してから `claude` を再実行してください。
 
 ## Skills (the research pipeline)
 
@@ -119,19 +121,29 @@ Run them in order, or jump in at any phase:
 | `/revise` | Apply review comments, log changelog |
 | `/checkpoint` | Persist current phase / next action into Zone C |
 
-### Ad-hoc skills (outside the main pipeline)
+### Pipeline-adjacent skills (recommended at specific points)
+
+| Skill | When to insert |
+|---|---|
+| `/review-script` | Before `/run-experiment` — Codex-backed pre-run review (statistics, leakage, reproducibility, numerical, test coverage). |
+| `/review-figures` | Between `/analyze-results` and `/discuss-results` — Gemini-backed multimodal review of rendered figures (chart choice, color, typography, accessibility, data honesty). |
+| `/lint` | Anywhere — runs `ruff` + `mypy` + `pytest` on the project (or a path) and presents a tidy summary. |
+
+### Post-pipeline skills (after `/revise`)
 
 | Skill | Purpose |
 |---|---|
-| `/ask-gemini` | One-shot Gemini call for quick web/PDF/image lookups; does not touch `docs/` |
-| `/ask-codex` | One-shot Codex call for quick logic/statistics/proof checks; does not touch `docs/` |
-| `/paper-deep-read` | Deep-read a single paper (URL/DOI/PDF) and persist a structured note under `docs/research/papers/<slug>.md` |
-| `/extend-literature` | Append a focused subtopic survey to the existing `lit-review.md` without rewriting it |
-| `/review-script` | Codex-backed pre-run review of an experiment / analysis script (statistics, leakage, reproducibility, numerical, test coverage) |
-| `/lint` | Run ruff + mypy + pytest on the project (or a path) and present a tidy summary |
-| `/review-figures` | Gemini-backed multimodal review of rendered figures under `data/results/<run_id>/figures/` (chart choice, color, typography, accessibility, data honesty) |
-| `/prepare-submission` | Package the draft for venue submission with mechanical checks (length, anonymization, figure embedding, required statements). Produces a self-contained bundle under `docs/paper/submissions/<venue>-<round>/` |
-| `/release-artifacts` | Prepare code + data for archival release (Zenodo / OSF / Dryad). Generates data card, manifest, CITATION.cff, license check, and Zenodo deposition payload under `docs/release/<release-tag>/` |
+| `/prepare-submission` | Package the draft for venue submission with mechanical checks (length, anonymization, figure embedding, required statements). Produces a self-contained bundle under `docs/paper/submissions/<venue>-<round>/`. |
+| `/release-artifacts` | Prepare code + data for archival release (Zenodo / OSF / Dryad). Generates data card, manifest, `CITATION.cff`, license check, and Zenodo deposition payload under `docs/release/<release-tag>/`. |
+
+### Ad-hoc utility skills
+
+| Skill | Purpose |
+|---|---|
+| `/ask-gemini` | One-shot Gemini call for quick web/PDF/image lookups; does not touch `docs/`. |
+| `/ask-codex` | One-shot Codex call for quick logic/statistics/proof checks; does not touch `docs/`. |
+| `/paper-deep-read` | Deep-read a single paper (URL/DOI/PDF) and persist a structured note under `docs/research/papers/<slug>.md`. |
+| `/extend-literature` | Append a focused subtopic survey to the existing `lit-review.md` without rewriting it. |
 
 ## Specialized agents
 
@@ -166,7 +178,7 @@ Run them in order, or jump in at any phase:
 ```
 .claude/
   agents/         12 specialized agent definitions
-  skills/         21 skills — 12 pipeline + 9 ad-hoc
+  skills/         21 skills — 12 pipeline + 3 pipeline-adjacent + 2 post-pipeline + 4 ad-hoc utility
   hooks/          8 Python hooks (routing, citation guard, repro check, logging, ...)
   rules/          7 domain rules (research-integrity, citation-rigor, ...)
   templates/      Starter scripts copied into src/utils/ on /init-research
