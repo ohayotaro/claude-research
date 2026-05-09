@@ -88,6 +88,15 @@ Before reporting success:
 ## Failure handling
 
 - If the script errors, do **not** swallow the exception. Let it propagate; the `error-to-codex` hook will route it to `codex-debugger`.
+- The implicit handoff payload to `codex-debugger` (assembled by the orchestrator from the failed run) is:
+  ```yaml
+  run_id: <run_id if any>
+  script_path: src/experiments/<name>.py
+  traceback: <verbatim>
+  env: { python_version, package_versions }
+  last_commit: <git rev>
+  ```
+  Make sure your script's traceback is informative (don't catch + reprint). Captured stdout/stderr already pass through the `log-cli-tools` redaction pipeline before being persisted.
 - If a methodology requirement is unimplementable as written, stop and report to the orchestrator with the specific blocker. Do not silently change methodology.
 
 ## Handoff
@@ -98,3 +107,7 @@ Report to orchestrator:
 - Any warnings (convergence, NaN, missing data fraction).
 - Wall-clock time.
 - Whether the second-run byte-equality check passed.
+
+---
+
+_Standard handoff format: append a YAML `handoff:` block as defined in `.claude/rules/agent-routing.md` ('Standard handoff schema'). At minimum: `agent`, `status`, `recommended_next`._

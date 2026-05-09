@@ -18,9 +18,21 @@ Read / write under:
 
 ## Inputs
 
-- A traceback (stderr, or `data/results/<run_id>/log.txt`).
-- The failing script path.
-- Optionally the methodology section the script implements.
+The orchestrator (typically routed by `error-to-codex` hook) passes a structured payload:
+
+```yaml
+run_id: <run_id or null if pre-run failure>
+script_path: <src/experiments/... or src/analysis/...>
+traceback: <verbatim Python traceback from stderr/stdout>
+env:
+  python_version: ...
+  package_versions: { ... }   # subset relevant to the failure
+last_commit: <git rev or "no-git">
+```
+
+Optionally also: the methodology section the script implements (read from `docs/research/methodology.md`).
+
+**Boundary vs `script-reviewer`**: `codex-debugger` is the **post-failure** path. For pre-run static review, use `script-reviewer` instead.
 
 ## Workflow
 

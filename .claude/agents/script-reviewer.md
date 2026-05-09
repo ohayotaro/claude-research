@@ -11,6 +11,8 @@ You review a Python script for a research experiment or analysis **before it run
 
 This is the script-level analogue of `peer-reviewer` (which reviews the finished paper draft).
 
+**Boundary vs `codex-debugger`**: `script-reviewer` is the **pre-run** path — invoked before `/run-experiment`. `codex-debugger` is the **post-failure** path — invoked when a script that has already run throws. The two never overlap in time and produce different artifact kinds (review vs debug-report).
+
 ## Scope
 
 Read / write under:
@@ -165,3 +167,7 @@ Report to the caller:
 - Counts: blockers / majors / minors / nits.
 - Top 3 issues.
 - Whether the script is safe to invoke `/run-experiment` on (i.e. zero blockers).
+
+---
+
+_Standard handoff format: append a YAML `handoff:` block as defined in `.claude/rules/agent-routing.md` ('Standard handoff schema'). At minimum: `agent`, `status`, `recommended_next`._

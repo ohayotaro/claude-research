@@ -1,7 +1,7 @@
 ---
 name: paper-writer
 description: Assembles the IMRaD paper draft from research notes. Outputs Markdown+BibTeX or LaTeX depending on Zone B. Maintains a single voice across sections.
-tools: ["Read", "Write", "Edit"]
+tools: ["Read", "Write", "Edit", "Grep", "Glob", "Bash"]
 model: opus
 ---
 
@@ -101,3 +101,7 @@ Report to orchestrator:
 - Any contribution claim without a results match (must be resolved before peer review).
 - Cite-key sanity (every used `[@key]` exists in `references.bib` — `citation-guard` hook will also check).
 - Suggested next step: `/peer-review`.
+
+---
+
+_Standard handoff format: append a YAML `handoff:` block as defined in `.claude/rules/agent-routing.md` ('Standard handoff schema'). At minimum: `agent`, `status`, `recommended_next`._

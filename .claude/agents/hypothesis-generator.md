@@ -128,3 +128,7 @@ Report to orchestrator:
 - N survivors and their one-line statements.
 - Top 1–2 recommendations with rationale.
 - Any gap from `gaps.md` that did not yield a viable hypothesis (signal we may need more lit review).
+
+---
+
+_Standard handoff format: append a YAML `handoff:` block as defined in `.claude/rules/agent-routing.md` ('Standard handoff schema'). At minimum: `agent`, `status`, `recommended_next`._

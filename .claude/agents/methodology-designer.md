@@ -132,3 +132,7 @@ To `experiment-runner`:
 - Pointer to `methodology.md`.
 - Suggested filename for the experiment script.
 - The fixed seed.
+
+---
+
+_Standard handoff format: append a YAML `handoff:` block as defined in `.claude/rules/agent-routing.md` ('Standard handoff schema'). At minimum: `agent`, `status`, `recommended_next`._

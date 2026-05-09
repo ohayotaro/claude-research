@@ -53,6 +53,42 @@ The orchestrator handles these directly:
 - `data-analyst` and `paper-writer` can run in parallel once analysis is locked: writer drafts methods/intro while analyst handles results.
 - `peer-reviewer` is always serial (it reads a finished draft).
 
-## Fallbacks
+## Standard handoff schema
 
-If `codex` or `gemini` CLIs are unavailable (see `.claude/logs/setup-status.json`), the affected agents fall back to running in-process via Claude. The hook `research-keyword-detector.py` checks this and warns the user.
+Every agent that completes a step appends a YAML handoff block as the **last section** of its written output (or in its reply to the orchestrator if the output is purely conversational). The orchestrator parses this to plan the next step.
+
+```yaml
+handoff:
+  agent: <my-agent-name>
+  status: success | partial | blocked
+  artifacts:                      # files (re-)written this turn
+    - path: docs/research/...
+      kind: lit-review | gaps | hypotheses | methodology | analysis | discussion | paper | review | run-output | log
+      summary: <one-line>
+  open_risks:                     # list[str] — short
+    - "..."
+  next_agent_inputs:              # what the next agent needs from me
+    primary_input: <path or null>
+    notes: "..."
+  recommended_next:               # may be null if the orchestrator decides
+    skill: /<skill-name>
+    rationale: <one-sentence>
+```
+
+`status: blocked` means the agent stopped because of an upstream contract issue and is asking the orchestrator for a decision before continuing. Always-required fields are `agent`, `status`. Other fields are optional but encouraged.
+
+## Hook → agent payload schemas
+
+When a hook surfaces a delegation suggestion, it implies the orchestrator will pass a structured payload to the target agent. These contracts are documented in the relevant agent + the hook source:
+
+- `error-to-codex` → `codex-debugger`: `{run_id, script_path, traceback, env, last_commit}`.
+- `agent-router` / `research-keyword-detector` → user-facing hint only; no payload contract.
+
+## Fallback policy (single source of truth)
+
+When an external CLI partner is unavailable (`codex_available: false` or `gemini_available: false` in `.claude/logs/setup-status.json`):
+
+1. The agent that needs the partner **fails loudly** with a clear `status: blocked` handoff and reports the missing dependency.
+2. The orchestrator (not the agent) then decides whether to (a) ask the user to install/auth the CLI, (b) substitute a Claude subagent acting in the missing role with a reduced quality warning, or (c) pause the pipeline.
+
+Agents must NOT silently degrade to a Claude `WebFetch` or other in-process fallback. Silent degradation has produced inconsistent retrieval policy across the codebase. The `research-keyword-detector` hook prints a warning but does not enact a fallback.

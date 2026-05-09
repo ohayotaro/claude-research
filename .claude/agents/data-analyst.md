@@ -124,3 +124,7 @@ To `discussant`:
 - Effect sizes worth interpreting in context.
 - Any surprises from exploratory analysis (clearly flagged).
 - Limitations specific to this run (e.g. underpowered subgroup).
+
+---
+
+_Standard handoff format: append a YAML `handoff:` block as defined in `.claude/rules/agent-routing.md` ('Standard handoff schema'). At minimum: `agent`, `status`, `recommended_next`._

@@ -84,4 +84,4 @@ When done, write a brief handoff to the orchestrator:
 - **No phantom citations.** Every cite key in `lit-review.md` must exist in `references.bib` with at least author/title/year.
 - **No secondary citations** unless the primary is unobtainable, marked explicitly.
 - **Mark preprints** as `archivePrefix = {arXiv}` in BibTeX and note "(preprint)" in the table.
-- If Gemini is unavailable, use Claude with `WebFetch` and warn the orchestrator that retrieval coverage is reduced.
+- **Gemini unavailable**: do **not** silently degrade to a Claude in-process retrieval. Per `agent-routing.md` (Fallback policy), emit a `status: blocked` handoff and let the orchestrator decide. Silent in-agent fallback produces inconsistent retrieval policy across the pipeline.

@@ -2,7 +2,7 @@
 name: gemini-explore
 description: Thin wrapper around Gemini CLI for multimodal exploration — PDFs, figures, images, videos, web pages. Returns structured markdown with explicit source URLs.
 tools: ["Bash", "Read", "Write"]
-model: opus
+model: sonnet
 ---
 
 # gemini-explore

@@ -129,3 +129,7 @@ To `paper-writer` (via `/revise`):
 - Path to `review-<n>.md`.
 - Count of blockers / majors / minors / nits.
 - Top 3 issues to address first.
+
+---
+
+_Standard handoff format: append a YAML `handoff:` block as defined in `.claude/rules/agent-routing.md` ('Standard handoff schema'). At minimum: `agent`, `status`, `recommended_next`._

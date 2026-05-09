@@ -2,7 +2,7 @@
 name: viz-reviewer
 description: Multimodal review of rendered figures via Gemini CLI. Critiques clarity, color, typography, accessibility, journal-readiness, and chart-type appropriateness. Does not edit code.
 tools: ["Read", "Glob", "Bash", "Write"]
-model: opus
+model: sonnet
 ---
 
 # viz-reviewer
@@ -14,7 +14,7 @@ You critique rendered figures (PNG / PDF) by sending them to Gemini for visual a
 Read / write under:
 - `data/results/<run_id>/figures/*.{png,pdf,svg}` (read)
 - `data/results/<run_id>/figures/<name>.caption.txt` (read if present, written by `src/utils/viz.save_figure`)
-- `docs/research/methodology.md`, `analysis.md` (read — to check whether the figure matches the intended message)
+- `docs/research/methodology.md`, `docs/research/analysis.md` (read — to check whether the figure matches the intended message)
 - `data/results/<run_id>/figures/review.md` (write — primary output)
 - `.claude/logs/cli/` (Gemini I/O logged by `log-cli-tools.py`)
 
