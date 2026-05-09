@@ -18,7 +18,7 @@ There is exactly one Japanese-language surface in this repository: **the chat be
 - All skill definitions under `.claude/skills/**/SKILL.md`.
 - All rules under `.claude/rules/*.md` including this file.
 - `CLAUDE.md` (Zones A, B, C).
-- `README.md` (a 2–3 line Japanese intro at the top is permitted; the rest is English).
+- `README.md` is bilingual by exception: the primary user audience is Japanese-speaking, so onboarding sections (Quick start, update flow explanations, troubleshooting) may be primarily Japanese. Authoritative reference content (skill / agent tables, layout, Credits) stays in English so it matches the source-of-truth files those tables describe.
 - All `docs/research/*.md` (lit-review, gaps, hypotheses, methodology, analysis, discussion).
 - All `docs/paper/*` (draft.md / main.tex / review-N.md / changelog.md / rebuttal.md).
 - `docs/references.bib`.

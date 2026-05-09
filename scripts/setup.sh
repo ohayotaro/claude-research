@@ -48,6 +48,15 @@ else
     warn "  Install: https://github.com/google-gemini/gemini-cli"
 fi
 
+# --- Claude Code CLI (required for the next step) --------------------
+if command -v claude >/dev/null 2>&1; then
+    ok "claude CLI detected"
+else
+    warn "claude CLI not found on PATH. The orchestrator runs inside Claude Code —"
+    warn "  Install:        https://claude.com/code"
+    warn "  After install:  run 'claude' in this directory to start a session."
+fi
+
 # --- Persist detection result ----------------------------------------
 mkdir -p .claude/logs
 cat > .claude/logs/setup-status.json <<EOF

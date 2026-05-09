@@ -152,12 +152,12 @@ Run them in order, or jump in at any phase:
 
 ## Requirements
 
-- Claude Code (Opus 4.x)
-- [`uv`](https://github.com/astral-sh/uv) for Python environment
-- [Codex CLI](https://github.com/openai/codex) (recommended)
-- [Gemini CLI](https://github.com/google-gemini/gemini-cli) (recommended)
+- [Claude Code](https://claude.com/code) (Opus 4.x). Authenticate via `claude` once before running `/init-research`.
+- [`uv`](https://github.com/astral-sh/uv) for Python environment management.
+- [Codex CLI](https://github.com/openai/codex) (recommended). Provides Codex-backed strict review and debugging. Without it, `/peer-review`, `/script-review`, `/ask-codex`, and `codex-debugger` fall back to Claude subagents acting as critics — weaker, not blocking.
+- [Gemini CLI](https://github.com/google-gemini/gemini-cli) (recommended). Provides multimodal retrieval. Without it, `/literature-review`, `/extend-literature`, `/paper-deep-read`, `/ask-gemini`, and `/review-figures` will emit a `status: blocked` handoff and let the orchestrator decide between asking the user to install/auth Gemini or substituting a weaker Claude fallback.
 
-`setup.sh` detects what's available and falls back to Claude subagents when external CLIs are missing.
+`bash scripts/setup.sh` detects which CLIs are available and writes the result to `.claude/logs/setup-status.json`. Hooks read this file and warn the user when a delegation target is missing.
 
 ## Layout
 
@@ -212,7 +212,7 @@ CLAUDE.md         3-zone config (immutable rules / project / session)
 pyproject.toml    Non-package uv project (package = false), with pytest pythonpath = src
 ```
 
-`/init-research` を実行すると `docs/`, `src/`, `data/`, `tests/`, `notebooks/` 配下のスケルトンが生成され、`src/utils/repro.py` も自動配置されます。
+`/init-research` を実行すると `docs/`, `src/`, `data/`, `tests/`, `notebooks/` 配下のスケルトンが生成され、`src/utils/repro.py` と `src/utils/viz.py` が `.claude/templates/python/` から自動配置されます。
 
 ## Credits
 

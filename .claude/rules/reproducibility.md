@@ -27,11 +27,16 @@ data/results/<run_id>/
   "python_version": "3.12.x",
   "platform": "darwin-arm64",
   "package_versions": {"numpy": "2.0.1", "...": "..."},
-  "hardware": {"cpu": "...", "gpu": "...", "ram_gb": 32}
+  "hardware": {"cpu_count": 12, "cpu": "...", "gpu": "...", "ram_gb": 32}
 }
 ```
 
-The `reproducibility-check` hook blocks writes to `data/results/<run_id>/` that do not include a valid `metadata.json` with all required fields.
+`hardware` requires `cpu_count` only. `cpu`, `gpu`, `ram_gb` are
+strongly recommended but optional (the default `repro.py` ships with
+`cpu_count`; extend it with `psutil` / `nvidia-smi` calls if your
+methodology demands the rest).
+
+The `reproducibility-check` hook warns on writes to `data/results/<run_id>/` whose `metadata.json` is missing required keys (`run_id`, `started_at`, `script`, `args`, `seed`, `git_rev`, `python_version`, `platform`, `package_versions`).
 
 ## Seed policy
 

@@ -36,7 +36,7 @@ The full routing rules live in `.claude/rules/agent-routing.md`. Hooks under `.c
 
 - Never modify `.claude/` files unless the user explicitly asks. This includes agents, skills, hooks, rules, and settings.
 - Never delete data under `data/`. Append-only. If a result is wrong, write a new `run_id`.
-- Every claim in `docs/research/*.md` and `docs/paper/*` must carry a `[@citekey]` referring to `docs/references.bib`. The `citation-guard` hook enforces this.
+- Every **non-original factual claim** in `docs/research/*.md` and `docs/paper/*` must carry a `[@citekey]` referring to `docs/references.bib`. Own contributions, definitions you introduce, and common knowledge are exempt — see `.claude/rules/citation-rigor.md` for the full rule. The `citation-guard` hook nudges (does not block).
 - Every experiment run must produce `data/results/<run_id>/metadata.json` with `seed`, `git_rev`, `python_version`, `package_versions`, `started_at`, `finished_at`. The `reproducibility-check` hook enforces this.
 - Negative results are reported. Do not hide failures.
 

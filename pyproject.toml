@@ -26,8 +26,9 @@ dev = [
 # uv treats this project as a virtual environment for dependencies only,
 # not as a buildable / installable Python package. Research code lives in
 # src/{experiments,analysis,utils}/ and is imported via PYTHONPATH=src
-# (configured for tests below; experiment scripts get it via a small
-# bootstrap in src/utils/repro.py).
+# (configured for tests via [tool.pytest.ini_options].pythonpath below).
+# Experiment scripts add src/ to sys.path themselves with a 3-line bootstrap
+# documented in .claude/agents/experiment-runner.md.
 [tool.uv]
 package = false
 

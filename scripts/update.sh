@@ -38,19 +38,29 @@ if [[ ! -f "$SOURCE/CLAUDE.md" ]]; then
     exit 2
 fi
 
+# --- Required external commands -------------------------------------
+for cmd in rsync python3 cmp; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+        err "$cmd not found on PATH. Install it before running update.sh."
+        exit 2
+    fi
+done
+
 # --- Self-bootstrap --------------------------------------------------
 # If the source ships a newer update.sh than what we are currently
-# running, copy it in and re-execute. Without this, a bug in the local
-# update.sh can never be fixed via the update flow itself — the user
-# would have to manually copy the fixed script first. Idempotent: when
-# local matches source, this block is a no-op.
+# running, atomically swap it in and re-execute. Without this, a bug in
+# the local update.sh can never be fixed via the update flow itself —
+# the user would have to manually copy the fixed script first.
+# Idempotent: when local matches source, this block is a no-op.
 SRC_SCRIPT="$SOURCE/scripts/update.sh"
 THIS_SCRIPT="${BASH_SOURCE[0]}"
 if [[ -f "$SRC_SCRIPT" ]] && ! cmp -s "$SRC_SCRIPT" "$THIS_SCRIPT"; then
     bold "Self-bootstrap: source has a newer update.sh; replacing local copy and re-executing"
-    cp "$SRC_SCRIPT" "$THIS_SCRIPT"
-    chmod +x "$THIS_SCRIPT"
-    ok "scripts/update.sh updated from $SRC_SCRIPT"
+    TMP_SCRIPT="$(mktemp "${THIS_SCRIPT}.new.XXXXXX")"
+    cp "$SRC_SCRIPT" "$TMP_SCRIPT"
+    chmod +x "$TMP_SCRIPT"
+    mv "$TMP_SCRIPT" "$THIS_SCRIPT"
+    ok "scripts/update.sh updated from $SRC_SCRIPT (atomic mv)"
     echo
     exec bash "$THIS_SCRIPT" --source "$SOURCE"
 fi
@@ -59,6 +69,25 @@ fi
 # with a clearly-named timestamped directory; .gitignore excludes it.
 BACKUP_DIR=".update-backup-$(date -u +%Y%m%dT%H%M%SZ)"
 mkdir -p "$BACKUP_DIR"
+
+# --- Transactional rollback -----------------------------------------
+# If anything below the backup step fails, restore CLAUDE.md from the
+# backup so the user is never left with the template's placeholder Zone
+# B / C in their CLAUDE.md.
+ROLLBACK_NEEDED=0
+rollback() {
+    local rc=$?
+    if [[ "$ROLLBACK_NEEDED" == "1" && -f "$BACKUP_DIR/CLAUDE.md.before" ]]; then
+        warn "update failed (exit $rc). Restoring CLAUDE.md from backup."
+        cp "$BACKUP_DIR/CLAUDE.md.before" CLAUDE.md
+        warn "CLAUDE.md restored. Note that .claude/ / .codex/ / .gemini/ /"
+        warn "scripts/ may already have been partially overlaid — inspect"
+        warn "$BACKUP_DIR for the pre-update state and rerun once the cause"
+        warn "is fixed."
+    fi
+    exit "$rc"
+}
+trap rollback ERR
 
 # --- Extract Zone B and Zone C from the current CLAUDE.md ------------
 bold "Backing up Zone B (project config), Zone C (session state), and CLAUDE.md"
@@ -102,6 +131,9 @@ missing = [m for m in required if m not in text]
 if missing:
     raise SystemExit(f"template CLAUDE.md is missing markers {missing}; refusing to overlay")
 PY
+
+# From this point on, a failure must trigger CLAUDE.md restoration.
+ROLLBACK_NEEDED=1
 
 # --- Overlay template ------------------------------------------------
 bold "Overlaying template from $SOURCE"
@@ -161,6 +193,10 @@ if [[ -s "$BACKUP_DIR/ZONE_C.md" ]]; then
 else
     warn "Zone C left at template default (no backup was available)."
 fi
+
+# Reached the end successfully — disable the rollback trap.
+ROLLBACK_NEEDED=0
+trap - ERR
 
 echo
 ok "Update complete."
