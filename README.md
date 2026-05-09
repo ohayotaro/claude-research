@@ -1,236 +1,238 @@
-# Claude Research Orchestrator
+# Research Orchestrator
 
-研究分野を問わず使える、Claude Code を司令塔とした **multi-agent research orchestrator** テンプレートです。
+> Claude Code (Opus 4.7, 1M context) as orchestrator, coordinating Codex CLI and Gemini CLI as specialized agents for the full research lifecycle — literature review through archival release. Field-agnostic — bring your own discipline.
 
-A field-agnostic research orchestrator template. Claude Code (Opus) coordinates a small team of specialized agents and external CLI partners (Codex, Gemini) across the full research lifecycle:
+```
+Claude Code (Orchestrator) ─┬─ Codex CLI       (logical critique, statistics, debugging)
+                             ├─ Gemini CLI      (papers, PDFs, figures, multimodal)
+                             └─ Opus subagents  (lit synthesis, hypothesis, analysis, writing)
+```
 
-> **literature review → gap identification → hypothesis generation → experiment design → script-based verification → results analysis → figure review → discussion → paper writing → peer review → revision → submission packaging → archival release**
-
-## Philosophy
-
-- **Orchestrator delegates only — it does not implement.** The main Claude session preserves context and routes work to specialists.
-- **Right tool for right task.**
-  - **Claude Opus** — orchestration, hypothesis generation, large-context analysis & discussion
-  - **Claude Sonnet** — light implementation, edits, formatting
-  - **Codex CLI** — logical verification, statistical rigor, strict review, debugging
-  - **Gemini CLI** — web research, paper PDFs, figures, multimodal exploration
-- **Field-agnostic.** `/init-research` collects domain, theme, research question, and writes them into Zone B of `CLAUDE.md`. The same template works for physics, biology, social science, CS, etc.
-- **English everywhere except the user-facing dialogue.** See `.claude/rules/language.md`.
+- **12 role-based agents** (literature-reviewer, hypothesis-generator, methodology-designer, experiment-runner, data-analyst, discussant, paper-writer, peer-reviewer, script-reviewer, viz-reviewer, codex-debugger, gemini-explore)
+- **21 skills** across 4 buckets — 12 main pipeline (lit review → release), 3 pipeline-adjacent (`/review-script`, `/review-figures`, `/lint`), 2 post-pipeline (`/prepare-submission`, `/release-artifacts`), 4 ad-hoc (`/ask-gemini`, `/ask-codex`, `/paper-deep-read`, `/extend-literature`)
+- **7 rules** for research integrity, citation rigor, statistical rigor, reproducibility, writing style, agent routing, and language policy
+- **8 hooks** with absolute-path resolution, secret redaction, JSON-safe parsing, and `tool_use_id` pairing — citation guard, reproducibility check, agent router, CLI logger
+- **Field-agnostic via `/init-research`**: discipline, theme, RQ, paper format (Markdown+BibTeX or LaTeX), runtime, and figure-style preferences all chosen at init time and recorded in `CLAUDE.md` Zone B
 
 ## Quick start
 
-```bash
-# 1. Clone or copy this repo into your research project directory
-# 2. Install dependencies
-bash scripts/setup.sh
-# 3. Open in Claude Code
-claude
-# 4. Inside Claude, initialize the research project
-/init-research
-```
-
-`/init-research` will ask you (in Japanese) about the research domain, theme, RQ, paper output language, paper format (Markdown+BibTeX or LaTeX), and writes those into `CLAUDE.md` Zone B and `pyproject.toml`.
-
-### Clone with a project-specific name (recommended)
-
-研究プロジェクトごとに別ディレクトリで使い、テンプレ起源の `origin` を自分の repo に張り替えるパターン:
+Install prerequisites first (see [Prerequisites](#prerequisites)). Then, in your project directory:
 
 ```bash
-git clone https://github.com/ohayotaro/claude-research-orchestrator.git my-research-project
-cd my-research-project
-
-# Detach from the template's origin
-git remote remove origin
-
-# Point to your own research repo (create it on GitHub first, then):
-# git remote add origin https://github.com/<you>/my-research-project.git
-
+cd /path/to/your-project
+git clone --depth 1 https://github.com/ohayotaro/claude-research-orchestrator.git .starter \
+  && cp -r .starter/.claude .starter/.codex .starter/.gemini .starter/CLAUDE.md \
+        .starter/scripts .starter/pyproject.toml .starter/.gitignore . \
+  && rm -rf .starter
 bash scripts/setup.sh
 claude
-# Inside Claude:
-/init-research
 ```
 
-これでテンプレ本体（このリポジトリ）と個別の研究プロジェクトの履歴が混ざらず、テンプレ更新は `scripts/update.sh --source <template-path>` 経由で取り込めます。
+Inside Claude Code:
 
-### Pulling template updates into an existing research project
+```
+/init-research    # discipline / theme / RQ / paper format / runtime / viz preference
+```
 
-このテンプレ（`claude-research-orchestrator`）に修正・改善が入ったとき、すでに走っている研究プロジェクトにそれを取り込む手順:
+After the wizard, `CLAUDE.md` Zone B describes your project, `src/utils/{repro.py,viz.py}` are placed from `.claude/templates/python/`, and `docs/`, `src/`, `data/`, `tests/`, `notebooks/` are scaffolded.
+
+## Prerequisites
+
+| Tool | Version | Install |
+|------|---------|---------|
+| Claude Code | latest | `npm i -g @anthropic-ai/claude-code` |
+| Codex CLI | ≥0.105 | `brew install codex` (macOS) or `npm i -g @openai/codex` |
+| Gemini CLI | latest | `npm i -g @google/gemini-cli` |
+| Git | any | system package manager |
+| Python | ≥3.12 | for hooks (`.claude/hooks/*.py`) and experiments |
+| `uv` | latest | `brew install uv` or `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+
+After install:
 
 ```bash
-# 1. Get the latest template into a sibling directory (first time only)
+claude --version
+codex --version  && codex login
+gemini --version && gemini login
+uv --version
+```
+
+Codex and Gemini are recommended but not blocking. Without Codex, `/peer-review`, `/review-script`, `/ask-codex`, and `codex-debugger` fall back to Claude subagents acting as critics (weaker). Without Gemini, `/literature-review`, `/extend-literature`, `/paper-deep-read`, `/ask-gemini`, and `/review-figures` emit a `status: blocked` handoff and let the orchestrator decide. `bash scripts/setup.sh` writes detection results to `.claude/logs/setup-status.json`; hooks read this and warn the user when a delegation target is missing.
+
+## What gets copied into your project
+
+```
+your-project/
+├── CLAUDE.md                  # 3-Zone orchestrator contract
+├── pyproject.toml             # uv non-package mode + dev deps
+├── .gitignore                 # data/raw, data/processed, .claude/logs, .update-backup-*
+├── .claude/
+│   ├── settings.json          # hook wiring (PostToolUseFailure, ${CLAUDE_PROJECT_DIR})
+│   ├── routing-keywords.json  # keyword → agent / skill suggestions
+│   ├── paper-template-config.json
+│   ├── agents/                # 12 role-based agents
+│   ├── hooks/                 # 8 Python hooks
+│   ├── rules/                 # 7 domain rules
+│   ├── skills/                # 21 skill definitions
+│   └── templates/python/      # repro.py + viz.py copied into src/utils/ on /init-research
+├── .codex/AGENTS.md           # Codex CLI contract
+├── .gemini/GEMINI.md          # Gemini CLI contract
+└── scripts/{setup,update}.sh  # detect deps; pull template updates with Zone B/C preservation
+```
+
+Your research outputs (`docs/`, `src/`, `data/`, `tests/`, `notebooks/`) are left alone by `update.sh`. The template owns nothing outside the four paths above plus `CLAUDE.md` Zones A.
+
+## Workflow
+
+```
+/init-research → /literature-review → /identify-gaps → /generate-hypothesis →
+/design-experiment → /review-script → /run-experiment → /analyze-results →
+/review-figures → /discuss-results → /write-paper → /peer-review → /revise →
+/prepare-submission → /release-artifacts
+```
+
+Detailed groupings:
+
+```
+Discovery:    /literature-review → /identify-gaps → /generate-hypothesis
+Experiment:   /design-experiment → /review-script → /run-experiment
+Analysis:     /analyze-results → /review-figures → /discuss-results
+Writing:      /write-paper → /peer-review → /revise
+Publication:  /prepare-submission → /release-artifacts
+Operations:   /lint, /checkpoint, /ask-codex, /ask-gemini, /paper-deep-read, /extend-literature
+```
+
+See `docs/orchestrator-review-001.md` for the design audit and resulting fixes (R1–R7).
+
+## Skills
+
+21 skills organized by purpose. Full spec for each is at `.claude/skills/<name>/SKILL.md`. The "Owner" column lists the agent or external CLI that performs the heavy work; the orchestrator drives the flow but does not implement.
+
+### Setup
+
+| Skill | Purpose | Owner |
+|-------|---------|-------|
+| `/init-research` | Discipline, theme, RQ, paper format (Markdown+BibTeX or LaTeX), runtime language, viz-style preference. Populates Zone B and copies starter scripts into `src/utils/`. | — |
+
+### Discovery
+
+| Skill | Purpose | Owner |
+|-------|---------|-------|
+| `/literature-review` | Gemini-driven prior-art survey. Rewrites `docs/research/lit-review.md` and extends `docs/references.bib`. | literature-reviewer + Gemini |
+| `/identify-gaps` | Extract concrete research gaps from the literature review into `docs/research/gaps.md`. | hypothesis-generator (gap mode) |
+| `/generate-hypothesis` | Diverge to 10–15 candidates → Codex critique → converge to 3–6 testable hypotheses in `docs/research/hypotheses.md`. | hypothesis-generator + Codex |
+
+### Experiment
+
+| Skill | Purpose | Owner |
+|-------|---------|-------|
+| `/design-experiment` | Operationalize variables, choose statistical test, compute power, pre-register. Codex validates. Locks `docs/research/methodology.md`. | methodology-designer + Codex |
+| `/review-script` | Pre-run review of `src/experiments/*.py` or `src/analysis/*.py`: statistics, leakage, reproducibility, numerical edge cases, test coverage. | script-reviewer + Codex |
+| `/run-experiment` | Implement methodology as a Python script under `uv`; capture full reproducibility metadata into `data/results/<run_id>/`. | experiment-runner |
+
+### Analysis
+
+| Skill | Purpose | Owner |
+|-------|---------|-------|
+| `/analyze-results` | Pre-registered statistical analysis with effect sizes + 95% CIs; appends `## Run <run_id>` section to `docs/research/analysis.md`. Generates figures via `src/utils/viz.py`. | data-analyst |
+| `/review-figures` | Multimodal review of rendered figures: chart choice, color, typography, accessibility, data honesty. Output `data/results/<run_id>/figures/review.md`. | viz-reviewer + Gemini |
+| `/discuss-results` | Implications, mechanisms, limitations, future work. Cross-references analysis with literature. Writes `docs/research/discussion.md`. | discussant |
+
+### Writing
+
+| Skill | Purpose | Owner |
+|-------|---------|-------|
+| `/write-paper` | Assemble IMRaD draft from the five research notes. Markdown+BibTeX or LaTeX per Zone B. | paper-writer |
+| `/peer-review` | Codex-driven strict review of the draft; produces `docs/paper/review-<n>.md` with severity-tagged comments and rebuttal scaffold. | peer-reviewer + Codex |
+| `/revise` | Apply review comments to the draft; fill rebuttal scaffold; append entry to `docs/paper/changelog.md`. | paper-writer |
+
+### Publication
+
+| Skill | Purpose | Owner |
+|-------|---------|-------|
+| `/prepare-submission` | Package the draft for venue submission: length / cite-key / figure / anonymization / required-statements checks. Self-contained bundle under `docs/paper/submissions/<venue>-<round>/`. Never auto-submits. | paper-writer |
+| `/release-artifacts` | Code + data archival release prep: license check, data card, manifest, `CITATION.cff`, Zenodo deposition payload under `docs/release/<release-tag>/`. Excludes `data/raw/` if Zone B `data_sensitivity ≠ none`. Never auto-uploads. | orchestrator + paper-writer + literature-reviewer |
+
+### Operations
+
+| Skill | Purpose | Owner |
+|-------|---------|-------|
+| `/lint` | Run `ruff` + `mypy` + `pytest` (touched modules) and present a tidy summary. Logs to `.claude/logs/lint/<ISO>.md`. | — |
+| `/checkpoint` | Snapshot current phase, last `run_id`, recent artifacts, and next action into `CLAUDE.md` Zone C. | — |
+
+### Adapters
+
+| Skill | Purpose | Owner |
+|-------|---------|-------|
+| `/ask-gemini` | One-shot Gemini call for quick web / PDF / image / video lookup. Does not write to `docs/`. | Gemini |
+| `/ask-codex` | One-shot Codex call for quick logic / proof / statistics check. Does not write to `docs/`. | Codex |
+| `/paper-deep-read` | Deep-read one paper (URL / DOI / PDF) → structured note at `docs/research/papers/<slug>.md`. | gemini-explore |
+| `/extend-literature` | Append-only subtopic survey to `lit-review.md`. Never rewrites existing sections. | literature-reviewer (extend mode) |
+
+## Updating the template
+
+Run `scripts/update.sh` from your project root with a path to a fresh template checkout. It backs up `CLAUDE.md` Zone B (project config) and Zone C (session progress), preserves `.claude/logs/`, then overlays the rest. Self-bootstraps if the template ships a newer `update.sh`.
+
+```bash
+# First time only — clone the template into a sibling directory
 git clone https://github.com/ohayotaro/claude-research-orchestrator.git ../template
 
-# Subsequent updates: just pull
+# Subsequent updates — pull then overlay
 git -C ../template pull
-
-# 2. Inside your research project, overlay the template
-cd ~/path/to/my-research-project
 bash scripts/update.sh --source ../template
 ```
 
-`scripts/update.sh` が以下を行います:
+After `update.sh`, restart your Claude Code session (`/exit` → `claude`) — agent / skill / hook definitions are loaded at session startup.
 
-- **Zone B / Zone C の自動退避・復元**: `CLAUDE.md` のプロジェクト固有設定（Zone B、`/init-research` の出力）と進捗状態（Zone C、`/checkpoint` の蓄積）を退避し、テンプレ更新後に再注入します。
-- **テンプレ層のみ上書き**: `.claude/`, `.codex/`, `.gemini/`, `scripts/` を `rsync --delete` で同期します。**ただし `.claude/logs/` は除外**されるため、CLI 呼出履歴・script レビュー・lint・debug ログ等のセッション成果物は保全されます。
-- **セルフブートストラップ**: ソース側の `update.sh` がローカルと異なる場合、自動的にローカルを置き換えて再実行します。`update.sh` 自身のバグ修正もこのフローで取り込めます。
-- **バックアップ**: 退避ファイルは repo root の `.update-backup-<timestamp>/` に残り、`CLAUDE.md.before` も含むため diff によるレビューが可能です（`.gitignore` 済み、削除しても問題ありません）。
+What `update.sh` preserves vs overwrites:
 
-#### 保全 / 上書きの一覧
+| Path | Behavior | Why |
+|------|----------|-----|
+| `docs/`, `src/`, `data/`, `tests/`, `notebooks/` | never touched | research outputs |
+| `pyproject.toml`, `README.md`, `.gitignore`, `uv.lock` | never touched | project-owned |
+| `CLAUDE.md` Zone B | preserved (backup → restore) | `/init-research` output |
+| `CLAUDE.md` Zone C | preserved (backup → restore) | `/checkpoint` accumulated state |
+| `.claude/logs/` | preserved (`rsync --exclude`) | CLI history, review files, lint logs |
+| `.claude/{agents,skills,hooks,rules,templates}/`, `.claude/*.json` | overwritten (`rsync --delete`) | template layer |
+| `.codex/`, `.gemini/`, `scripts/` | overwritten | template layer |
 
-| パス | 挙動 | 用途 |
-|---|---|---|
-| `docs/`, `src/`, `data/`, `tests/`, `notebooks/` | **完全に touch しない** | 研究成果物 |
-| `pyproject.toml`, `README.md`, `.gitignore`, `uv.lock` | **完全に touch しない** | プロジェクト所有 |
-| `CLAUDE.md` Zone B | **保全**（退避 → 復元） | `/init-research` の出力（分野・テーマ・RQ・viz_preferences 等） |
-| `CLAUDE.md` Zone C | **保全**（退避 → 復元） | `/checkpoint` で蓄積されたセッション進捗（current_phase, last_run_id, next_action 等） |
-| `CLAUDE.md` Zone A | 上書き（テンプレ更新を反映） | 不変ルール（テンプレ層） |
-| `.claude/logs/` | **保全**（rsync exclude） | CLI 呼出履歴、`/review-script` レビュー、`/lint` 結果、debug 報告 |
-| `.claude/agents/`, `.claude/skills/`, `.claude/hooks/`, `.claude/rules/`, `.claude/templates/`, `.claude/*.json` | 上書き（rsync --delete） | テンプレ層 — 改良はテンプレ側に push する設計 |
-| `.codex/AGENTS.md`, `.gemini/GEMINI.md` | 上書き | テンプレ層 |
-| `scripts/` | 上書き（self-bootstrap 含む） | テンプレ層 |
+Backups land at `.update-backup-<timestamp>/` (gitignored) including a full `CLAUDE.md.before` so you can `diff` afterward.
 
-> **注意**: `.claude/agents/` 等にプロジェクト独自のカスタムファイルを直接置くと update 時に消去されます。汎用化できるならテンプレ側に PR を、プロジェクト専用にしたい場合は別ディレクトリに保管した上で update 後に手動で配置してください。
-
-更新後は念のため:
-
-```bash
-bash scripts/setup.sh        # 依存に変更があれば反映
-git status                    # 何が変わったか確認
-git add -A && git commit -m "Sync template @ <commit-sha>"
-```
-
-> **重要**: テンプレ更新で agents / skills / hooks / settings.json が変わった場合、Claude Code セッションの**再起動が必要**です（agent / hook 定義はセッション起動時にロードされるため）。`/exit` してから `claude` を再実行してください。
-
-## Skills (the research pipeline)
-
-Run them in order, or jump in at any phase:
-
-| Skill | Purpose |
-|---|---|
-| `/init-research` | Initialize a new research project (writes Zone B, scaffolds `docs/`, `src/`, `data/`) |
-| `/literature-review` | Gemini-driven prior-art survey → `docs/research/lit-review.md` + `references.bib` |
-| `/identify-gaps` | Extract research gaps from the review |
-| `/generate-hypothesis` | Generate solution candidates, critiqued by Codex |
-| `/design-experiment` | Design experiment, choose statistics, sample size |
-| `/run-experiment` | Implement and run Python scripts under `uv` with full reproducibility metadata |
-| `/analyze-results` | Statistical tests, effect sizes, CIs, figures |
-| `/discuss-results` | Implications, limitations, future work |
-| `/write-paper` | Assemble IMRaD draft (Markdown or LaTeX, per Zone B) |
-| `/peer-review` | Codex-driven strict review |
-| `/revise` | Apply review comments, log changelog |
-| `/checkpoint` | Persist current phase / next action into Zone C |
-
-### Pipeline-adjacent skills (recommended at specific points)
-
-| Skill | When to insert |
-|---|---|
-| `/review-script` | Before `/run-experiment` — Codex-backed pre-run review (statistics, leakage, reproducibility, numerical, test coverage). |
-| `/review-figures` | Between `/analyze-results` and `/discuss-results` — Gemini-backed multimodal review of rendered figures (chart choice, color, typography, accessibility, data honesty). |
-| `/lint` | Anywhere — runs `ruff` + `mypy` + `pytest` on the project (or a path) and presents a tidy summary. |
-
-### Post-pipeline skills (after `/revise`)
-
-| Skill | Purpose |
-|---|---|
-| `/prepare-submission` | Package the draft for venue submission with mechanical checks (length, anonymization, figure embedding, required statements). Produces a self-contained bundle under `docs/paper/submissions/<venue>-<round>/`. |
-| `/release-artifacts` | Prepare code + data for archival release (Zenodo / OSF / Dryad). Generates data card, manifest, `CITATION.cff`, license check, and Zenodo deposition payload under `docs/release/<release-tag>/`. |
-
-### Ad-hoc utility skills
-
-| Skill | Purpose |
-|---|---|
-| `/ask-gemini` | One-shot Gemini call for quick web/PDF/image lookups; does not touch `docs/`. |
-| `/ask-codex` | One-shot Codex call for quick logic/statistics/proof checks; does not touch `docs/`. |
-| `/paper-deep-read` | Deep-read a single paper (URL/DOI/PDF) and persist a structured note under `docs/research/papers/<slug>.md`. |
-| `/extend-literature` | Append a focused subtopic survey to the existing `lit-review.md` without rewriting it. |
-
-## Specialized agents
-
-12 agents under `.claude/agents/`. See `.claude/rules/agent-routing.md` for the full routing matrix and the standard handoff schema.
-
-| Agent | Backed by | Best at |
-|---|---|---|
-| `literature-reviewer` | Opus + Gemini CLI | Survey, citation graph, BibTeX entry generation |
-| `gemini-explore` | Gemini CLI | Multimodal: PDFs, figures, videos, web pages |
-| `hypothesis-generator` | Opus (+ Codex critique) | From gaps to candidate hypotheses; framing contributions |
-| `methodology-designer` | Opus (+ Codex check) | Experiment design, statistical test choice, sample size |
-| `experiment-runner` | Sonnet | Writing Python, running under `uv`, capturing reproducibility metadata |
-| `data-analyst` | Opus | Statistical analysis, effect sizes, CIs, plotting (uses `src/utils/viz.py`) |
-| `discussant` | Opus | Implications, limitations, future work |
-| `paper-writer` | Opus | IMRaD assembly, voice consistency, narrative |
-| `peer-reviewer` | Codex | Strict logical / statistical / citation review (paper draft) |
-| `script-reviewer` | Codex | Strict pre-run review of experiment / analysis scripts |
-| `viz-reviewer` | Gemini | Multimodal review of rendered figures (chart choice, color, typography, accessibility, data honesty) |
-| `codex-debugger` | Codex | Root-cause analysis of script failures |
-
-## Requirements
-
-- [Claude Code](https://claude.com/code) (Opus 4.x). Authenticate via `claude` once before running `/init-research`.
-- [`uv`](https://github.com/astral-sh/uv) for Python environment management.
-- [Codex CLI](https://github.com/openai/codex) (recommended). Provides Codex-backed strict review and debugging. Without it, `/peer-review`, `/script-review`, `/ask-codex`, and `codex-debugger` fall back to Claude subagents acting as critics — weaker, not blocking.
-- [Gemini CLI](https://github.com/google-gemini/gemini-cli) (recommended). Provides multimodal retrieval. Without it, `/literature-review`, `/extend-literature`, `/paper-deep-read`, `/ask-gemini`, and `/review-figures` will emit a `status: blocked` handoff and let the orchestrator decide between asking the user to install/auth Gemini or substituting a weaker Claude fallback.
-
-`bash scripts/setup.sh` detects which CLIs are available and writes the result to `.claude/logs/setup-status.json`. Hooks read this file and warn the user when a delegation target is missing.
-
-## Layout
+## Architecture
 
 ```
-.claude/
-  agents/         12 specialized agent definitions
-  skills/         21 skills — 12 pipeline + 3 pipeline-adjacent + 2 post-pipeline + 4 ad-hoc utility
-  hooks/          8 Python hooks (routing, citation guard, repro check, logging, ...)
-  rules/          7 domain rules (research-integrity, citation-rigor, ...)
-  templates/      Starter scripts copied into src/utils/ on /init-research
-    README.md     Structure, design principles, how to add another language
-    python/       Python recipes (default — uv-managed)
-      repro.py    Reproducibility metadata helper
-      viz.py      Visualization helpers — Okabe-Ito palette, save_figure(),
-                  STYLE_PROFILES (default / publication / presentation),
-                  apply_style() that reads viz_preferences from Zone B
-    # r/, julia/, etc. — placeholders for future expansion
-  logs/           Runtime artifacts — preserved across template updates
-    cli/          Codex / Gemini call I/O
-    review/       /review-script outputs
-    lint/         /lint outputs
-    debug/        codex-debugger reports
-    sessions.log  session-end breadcrumbs
-  settings.json
-  routing-keywords.json
-  paper-template-config.json
-.codex/AGENTS.md  Contract loaded by Codex CLI
-.gemini/GEMINI.md Contract loaded by Gemini CLI
-
-docs/
-  research/       lit-review, gaps, hypotheses, methodology, analysis, discussion (English)
-  paper/          draft.md or main.tex, review-N.md, changelog.md
-  references.bib
-
-src/
-  experiments/    Experiment scripts (Python, run via uv)
-  analysis/       Analysis scripts (use src/utils/viz.py for styling)
-  utils/          Shared helpers — repro.py and viz.py
-
-data/
-  raw/            Append-only raw inputs (gitignored)
-  processed/      Regenerated from raw via scripts (gitignored)
-  results/<run_id>/   Immutable per-run outputs with metadata.json
-
-notebooks/        Optional Jupyter
-tests/            pytest tests for src/
-scripts/
-  setup.sh        Detect uv / codex / gemini, sync deps
-  update.sh       Pull template updates with Zone B and logs preservation
-
-CLAUDE.md         3-zone config (immutable rules / project / session)
-pyproject.toml    Non-package uv project (package = false), with pytest pythonpath = src
+┌────────────────────────────────────────────────────────────┐
+│      Claude Code (Opus 4.7, 1M)  — Orchestrator            │
+├──────────────────┬──────────────┬──────────────────────────┤
+│  Opus Subagents  │  Codex CLI   │  Gemini CLI              │
+│ lit synthesis    │ critique     │ web / paper PDFs         │
+│ hypothesis       │ statistics   │ figures / images         │
+│ analysis         │ debugging    │ video / audio            │
+│ writing          │ contracts    │ multimodal extraction    │
+└──────────────────┴──────────────┴──────────────────────────┘
 ```
 
-`/init-research` を実行すると `docs/`, `src/`, `data/`, `tests/`, `notebooks/` 配下のスケルトンが生成され、`src/utils/repro.py` と `src/utils/viz.py` が `.claude/templates/python/` から自動配置されます。
+- **Codex** receives English-only structured prompts (see `.codex/AGENTS.md`) and returns severity-tagged comments (`blocker | major | minor | nit`) with `id`, `category`, `comment`, `suggested_fix` per issue.
+- **Gemini** receives multimodal input (URLs, file paths) and returns markdown with explicit source URLs / DOIs, or strict JSON when the caller specifies (see `.gemini/GEMINI.md`).
+- **Opus subagents** are role-named (e.g. `data-analyst`, `paper-writer`), discipline-agnostic, and read `CLAUDE.md` Zone B at runtime.
+- All agents emit a YAML `handoff:` block (schema in `.claude/rules/agent-routing.md`) with `agent`, `status`, `artifacts`, `recommended_next` so the orchestrator can plan downstream work.
+- When an external CLI is unavailable, agents emit `status: blocked` — they never silently degrade. The orchestrator decides whether to fall back, ask the user to install the CLI, or pause.
 
-## Credits
+## Language protocol
 
-Built on patterns from:
-- [`affaan-m/everything-claude-code`](https://github.com/affaan-m/everything-claude-code) — agent harness pattern
-- [`DeL-TaiseiOzaki/claude-code-orchestra`](https://github.com/DeL-TaiseiOzaki/claude-code-orchestra) — Codex / Gemini delegation contract
-- [`ohayotaro/claude-orchestrator`](https://github.com/ohayotaro/claude-orchestrator) — domain-specialized 3-zone template
+| Channel | Language |
+|---------|----------|
+| Orchestrator ↔ User | Japanese (default) — polite form, no emojis |
+| Agent ↔ Agent | English (fixed) |
+| Agent ↔ Codex / Gemini | English (fixed) |
+| Code / commit / paper draft / docs | English (fixed) |
+| Hook user-facing strings | Japanese (polite, `[hook-name]` prefix) |
+
+The single Japanese surface is the user-orchestrator dialogue. Everything else is English so logs, handoffs, and the paper itself are uniform. See `.claude/rules/language.md`.
+
+## Provenance
+
+Modeled after the same author's [`claude-orchestrator`](https://github.com/ohayotaro/claude-orchestrator) (financial-trading specialization) and [`claude-fullstack-orchestrator`](https://github.com/ohayotaro/claude-fullstack-orchestrator) (web/mobile/backend specialization), with structural cues from [`DeL-TaiseiOzaki/claude-code-orchestra`](https://github.com/DeL-TaiseiOzaki/claude-code-orchestra) (multi-agent dev environment) and the harness pattern from [`affaan-m/everything-claude-code`](https://github.com/affaan-m/everything-claude-code). The current orchestrator design (R1–R7) was produced by a 4-phase Codex review of the template; the audit and resulting fixes are recorded in `docs/orchestrator-review-001.md`.
+
+## License
+
+This template is yours to use however you like. The agents, skills, rules, prompts, and starter scripts are released into your project alongside your own license — pick one that suits the project (MIT / Apache 2.0 / CC-BY for data, etc.).
