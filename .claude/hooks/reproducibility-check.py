@@ -14,7 +14,7 @@ breaks the reproducibility contract.
 from __future__ import annotations
 
 import json
-import re
+import os
 import sys
 from pathlib import Path
 
@@ -30,25 +30,41 @@ REQUIRED_KEYS = {
     "package_versions",
 }
 
-RUN_DIR_RE = re.compile(r"^data/results/([^/]+)(/|$)")
+
+def _project_root() -> Path:
+    root = os.environ.get("CLAUDE_PROJECT_DIR")
+    return Path(root).resolve() if root else Path.cwd().resolve()
+
+
+def _run_id_for(path: str) -> str | None:
+    """If `path` is under <project>/data/results/<run_id>/, return run_id."""
+    if not path:
+        return None
+    try:
+        rel = Path(path).resolve().relative_to(_project_root())
+    except ValueError:
+        return None
+    parts = rel.parts
+    if len(parts) < 3 or parts[0] != "data" or parts[1] != "results":
+        return None
+    return parts[2]
 
 
 def main() -> int:
     payload = json.loads(sys.stdin.read() or "{}")
     inp = payload.get("tool_input", {})
     path = inp.get("file_path", "")
-    m = RUN_DIR_RE.match(path)
-    if not m:
+    run_id = _run_id_for(path)
+    if not run_id:
         return 0
-    run_id = m.group(1)
-    run_dir = Path("data/results") / run_id
+    run_dir = _project_root() / "data" / "results" / run_id
     if not run_dir.exists():
         return 0  # nothing to check yet
     md_path = run_dir / "metadata.json"
 
     # Skip the check if we ARE writing metadata.json itself (it might be
     # incomplete mid-write; the runner should set finished_at later).
-    if path.endswith("/metadata.json"):
+    if Path(path).name == "metadata.json":
         return 0
 
     if not md_path.exists():

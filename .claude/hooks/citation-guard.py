@@ -11,6 +11,7 @@ the author to cite, not to enforce automatically.
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -30,12 +31,28 @@ SELF = re.compile(r"\b(we|our|this paper|in this work)\b", re.IGNORECASE)
 SENT_SPLIT = re.compile(r"(?<=[.!?])\s+")
 
 
+def _project_root() -> Path:
+    """Resolve project root from CLAUDE_PROJECT_DIR env var, else cwd."""
+    root = os.environ.get("CLAUDE_PROJECT_DIR")
+    return Path(root).resolve() if root else Path.cwd().resolve()
+
+
 def is_doc_path(path: str) -> bool:
+    """Return True iff `path` is a Markdown/LaTeX file under <project>/docs/.
+
+    Claude Code passes `tool_input.file_path` as an absolute path, so we
+    relativize against the project root before checking.
+    """
     if not path:
         return False
-    return path.startswith("docs/") and (
-        path.endswith(".md") or path.endswith(".tex")
-    )
+    p = Path(path)
+    if not (p.suffix in {".md", ".tex"}):
+        return False
+    try:
+        rel = p.resolve().relative_to(_project_root())
+    except ValueError:
+        return False
+    return rel.parts and rel.parts[0] == "docs"
 
 
 def extract_new_content(payload: dict) -> str:
