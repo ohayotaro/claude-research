@@ -135,7 +135,7 @@ Run them in order, or jump in at any phase:
 
 ## Specialized agents
 
-12 agents under `.claude/agents/`. See `.claude/rules/agent-routing.md` for the full routing matrix.
+12 agents under `.claude/agents/`. See `.claude/rules/agent-routing.md` for the full routing matrix and the standard handoff schema.
 
 | Agent | Backed by | Best at |
 |---|---|---|
@@ -166,7 +166,7 @@ Run them in order, or jump in at any phase:
 ```
 .claude/
   agents/         12 specialized agent definitions
-  skills/         19 skills — 12 pipeline + 7 ad-hoc
+  skills/         21 skills — 12 pipeline + 9 ad-hoc
   hooks/          8 Python hooks (routing, citation guard, repro check, logging, ...)
   rules/          7 domain rules (research-integrity, citation-rigor, ...)
   templates/      Starter scripts copied into src/utils/ on /init-research
