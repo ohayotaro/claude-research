@@ -96,6 +96,16 @@
       "review figures", "review the figures", "check the figures",
       "are the figures publication-ready",
       "図を見て", "図表をレビュー", "図のチェック", "可視化を見て"
+    ],
+    "/prepare-submission": [
+      "prepare submission", "submit to", "package for", "ready to submit",
+      "venue compliance", "anonymize for review",
+      "投稿準備", "投稿パッケージ", "サブミット", "投稿用に整える"
+    ],
+    "/release-artifacts": [
+      "release", "Zenodo", "OSF", "DOI", "data card", "archive",
+      "publish data", "publish code",
+      "アーティファクト公開", "公開準備", "リリース", "データ公開"
     ]
   }
 }

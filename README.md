@@ -130,6 +130,8 @@ Run them in order, or jump in at any phase:
 | `/review-script` | Codex-backed pre-run review of an experiment / analysis script (statistics, leakage, reproducibility, numerical, test coverage) |
 | `/lint` | Run ruff + mypy + pytest on the project (or a path) and present a tidy summary |
 | `/review-figures` | Gemini-backed multimodal review of rendered figures under `data/results/<run_id>/figures/` (chart choice, color, typography, accessibility, data honesty) |
+| `/prepare-submission` | Package the draft for venue submission with mechanical checks (length, anonymization, figure embedding, required statements). Produces a self-contained bundle under `docs/paper/submissions/<venue>-<round>/` |
+| `/release-artifacts` | Prepare code + data for archival release (Zenodo / OSF / Dryad). Generates data card, manifest, CITATION.cff, license check, and Zenodo deposition payload under `docs/release/<release-tag>/` |
 
 ## Specialized agents
 
