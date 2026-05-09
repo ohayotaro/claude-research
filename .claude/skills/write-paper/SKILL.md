@@ -16,7 +16,7 @@ next_skill: /peer-review
 
 ## Steps for the orchestrator
 
-1. **Pre-flight.** All four research notes (`lit-review.md`, `methodology.md`, `analysis.md`, `discussion.md`) exist and are non-trivial.
+1. **Pre-flight.** All five research notes (`lit-review.md`, `hypotheses.md`, `methodology.md`, `analysis.md`, `discussion.md`) exist and are non-trivial (have at least one `##` section beyond the header). Abort with the missing file name(s) and the skill that produces them otherwise.
 2. **Launch** `paper-writer`. The agent reads Zone B for `paper_format` and assembles accordingly.
 3. **Citation sanity check.** The `citation-guard` hook runs on every Write/Edit; if it warns, the agent must fix before declaring done.
 4. **Contribution-claim check.** Every contribution claim in the introduction maps to a results subsection. Ask `paper-writer` to flag any unmatched claim.

@@ -17,13 +17,14 @@ next_skill: /peer-review (next round) or /checkpoint
 
 ## Steps for the orchestrator
 
-1. **Locate the latest review** (`review-<n>.md`).
-2. **Launch** `paper-writer` in revise mode. For each review point, the agent:
+1. **Pre-flight.** Verify the draft (`docs/paper/draft.md` or `main.tex`) and at least one `docs/paper/review-<n>.md` exist. If not, abort and suggest `/write-paper` or `/peer-review`. Create `docs/paper/changelog.md` with a one-line header if it does not yet exist.
+2. **Locate the latest review** (`review-<n>.md`).
+3. **Launch** `paper-writer` in revise mode. For each review point, the agent:
    - Either applies a change (records `file:line` in the rebuttal scaffold's "Change made" column),
    - Or declines (records "no change — reason").
    - Blockers and majors **must** be addressed (applied or explicitly justified for non-application). Minors and nits may be deferred.
-3. **Re-run citation-guard logic mentally** — the hook will catch any new uncited claims when the file is written.
-4. **If the revision touches numbers or methodology**, this is a deviation: must be recorded under "Deviations" in `methodology.md` per the design-experiment skill's rule.
-5. **Append** to `changelog.md`: `- <date> v<x.y>: addressed review-<n>.md (B:<count>, M:<count>, m:<count>, n:<count>)`.
-6. **Recommend re-review** if any blocker remained unfixed, or if the change was substantial (> 25% of major comments addressed).
-7. **Update Zone C**: `current_phase: revision`.
+4. **Re-run citation-guard logic mentally** — the hook will catch any new uncited claims when the file is written.
+5. **If the revision touches numbers or methodology**, this is a deviation: must be recorded under "Deviations" in `methodology.md` per the design-experiment skill's rule.
+6. **Append** to `changelog.md`: `- <date> v<x.y>: addressed review-<n>.md (B:<count>, M:<count>, m:<count>, n:<count>)`.
+7. **Recommend re-review** if any blocker remained unfixed, or if the change was substantial (> 25% of major comments addressed).
+8. **Update Zone C**: `current_phase: revision`.

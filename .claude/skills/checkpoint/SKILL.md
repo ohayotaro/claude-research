@@ -19,8 +19,8 @@ next_skill: any
    - Artifacts produced (file paths).
    - Decisions made (especially methodology lock-ins or scope changes).
 2. **Determine current phase** by looking at which research notes are populated.
-3. **Determine next action** by consulting the pipeline order:
-   - lit-review → identify-gaps → generate-hypothesis → design-experiment → run-experiment → analyze-results → discuss-results → write-paper → peer-review → revise.
+3. **Determine next action** by consulting the **research pipeline** order (this skill, `/checkpoint`, is the session-handoff layer and is not part of the research progression itself):
+   - lit-review → identify-gaps → generate-hypothesis → design-experiment → run-experiment → analyze-results → review-figures → discuss-results → write-paper → peer-review → revise.
 4. **Write Zone C** by replacing content between `<!-- ZONE_C_BEGIN -->` and `<!-- ZONE_C_END -->`. Format:
 
 ```yaml

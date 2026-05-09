@@ -47,4 +47,4 @@ The figure-level analogue of `/peer-review`. Catches chart-type misuse, palette 
 
 - **Do not edit figure files or `src/analysis/`.** Reviews are advisory.
 - **Do not skip Gemini.** A "review" without seeing the actual rendered figure is not a review — abort if Gemini is unavailable.
-- The skill writes to `data/results/<run_id>/figures/review.md`, which counts as analysis output (not a raw `data/results/raw/` artifact). It is appropriate to commit `review.md` to git for the historical record.
+- The skill writes to `data/results/<run_id>/figures/review.md`. This is an analysis output and is appropriate to commit to git for the historical record. (`data/raw/` and `data/processed/` are gitignored; `data/results/<run_id>/` is generally tracked.)

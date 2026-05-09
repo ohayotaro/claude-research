@@ -31,5 +31,8 @@ Delegates to the `literature-reviewer` agent. The orchestrator's job is to (a) c
 
 ## Common variants
 
-- **Targeted update**: user names a specific subtopic. Pass that as the search scope; agent appends rather than rewrites.
-- **Sanity check on a single paper**: skip this skill; use `gemini-explore` directly.
+- **Sanity check on a single paper**: skip this skill; use `/ask-gemini` or `/paper-deep-read` directly.
+
+## Mode
+
+`/literature-review` is **rewrite-only**. It overwrites `lit-review.md` from scratch using the current RQ. For incremental coverage of a subtopic without losing the existing review, use `/extend-literature` (the append-only counterpart). Two skills, two purposes — never both for the same kind of update.
