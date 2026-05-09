@@ -5,9 +5,15 @@ status to the user (Japanese), so the orchestrator and the user start aligned.
 
 from __future__ import annotations
 
+import os
 import re
 import sys
 from pathlib import Path
+
+
+def _project_root() -> Path:
+    root = os.environ.get("CLAUDE_PROJECT_DIR")
+    return Path(root).resolve() if root else Path.cwd().resolve()
 
 ZONE_B = re.compile(r"<!-- ZONE_B_BEGIN -->(.*?)<!-- ZONE_B_END -->", re.DOTALL)
 ZONE_C = re.compile(r"<!-- ZONE_C_BEGIN -->(.*?)<!-- ZONE_C_END -->", re.DOTALL)
@@ -30,7 +36,7 @@ def parse_kv(block: str) -> dict[str, str]:
 
 
 def main() -> int:
-    p = Path("CLAUDE.md")
+    p = _project_root() / "CLAUDE.md"
     if not p.exists():
         return 0
     text = p.read_text(encoding="utf-8")

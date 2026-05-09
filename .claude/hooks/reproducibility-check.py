@@ -51,8 +51,12 @@ def _run_id_for(path: str) -> str | None:
 
 
 def main() -> int:
-    payload = json.loads(sys.stdin.read() or "{}")
-    inp = payload.get("tool_input", {})
+    raw = sys.stdin.read() or "{}"
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return 0
+    inp = payload.get("tool_input", {}) or {}
     path = inp.get("file_path", "")
     run_id = _run_id_for(path)
     if not run_id:
@@ -80,6 +84,12 @@ def main() -> int:
         md = json.loads(md_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
         print(f"[reproducibility-check] {md_path} の JSON parse に失敗しました。")
+        return 0
+    if not isinstance(md, dict):
+        print(
+            f"[reproducibility-check] {md_path} のトップレベルが JSON object では"
+            "ありません。schema は .claude/rules/reproducibility.md を参照してください。"
+        )
         return 0
     missing = REQUIRED_KEYS - md.keys()
     if missing:

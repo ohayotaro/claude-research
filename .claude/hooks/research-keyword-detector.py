@@ -42,18 +42,32 @@ CODEX_PATTERNS = [
 ]
 
 
+def _project_root() -> Path:
+    import os
+    root = os.environ.get("CLAUDE_PROJECT_DIR")
+    return Path(root).resolve() if root else Path.cwd().resolve()
+
+
+def _coerce_bool(v: object, default: bool) -> bool:
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, str):
+        return v.strip().lower() in {"true", "1", "yes", "y"}
+    return default
+
+
 def cli_status() -> dict[str, bool]:
-    p = Path(".claude/logs/setup-status.json")
+    p = _project_root() / ".claude" / "logs" / "setup-status.json"
     if not p.exists():
         return {"codex_available": True, "gemini_available": True}
     try:
         d = json.loads(p.read_text(encoding="utf-8"))
-        return {
-            "codex_available": bool(d.get("codex_available", True)),
-            "gemini_available": bool(d.get("gemini_available", True)),
-        }
     except json.JSONDecodeError:
         return {"codex_available": True, "gemini_available": True}
+    return {
+        "codex_available": _coerce_bool(d.get("codex_available", True), True),
+        "gemini_available": _coerce_bool(d.get("gemini_available", True), True),
+    }
 
 
 def matches(prompt: str, patterns: list[str]) -> list[str]:
@@ -67,7 +81,11 @@ def matches(prompt: str, patterns: list[str]) -> list[str]:
 
 
 def main() -> int:
-    payload = json.loads(sys.stdin.read() or "{}")
+    raw = sys.stdin.read() or "{}"
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return 0
     prompt = payload.get("prompt", "")
     if not prompt.strip():
         return 0
@@ -80,26 +98,26 @@ def main() -> int:
     if gemini_hits:
         if status["gemini_available"]:
             msgs.append(
-                "[hint] Gemini への delegation を推奨します"
+                "[research-keyword-detector] Gemini への delegation を推奨します"
                 f"（検出: {', '.join(set(gemini_hits[:3]))}）。"
             )
         else:
             msgs.append(
-                "[hint] Gemini が必要と思われますが"
+                "[research-keyword-detector] Gemini が必要と思われますが"
                 f"（検出: {', '.join(set(gemini_hits[:3]))}）、"
-                "gemini CLI が見つかりません。Claude WebFetch にフォールバックします。"
+                "gemini CLI が見つかりません。orchestrator にフォールバック方針を決めさせてください。"
             )
     if codex_hits:
         if status["codex_available"]:
             msgs.append(
-                "[hint] Codex への delegation を推奨します"
+                "[research-keyword-detector] Codex への delegation を推奨します"
                 f"（検出: {', '.join(set(codex_hits[:3]))}）。"
             )
         else:
             msgs.append(
-                "[hint] Codex が必要と思われますが"
+                "[research-keyword-detector] Codex が必要と思われますが"
                 f"（検出: {', '.join(set(codex_hits[:3]))}）、"
-                "codex CLI が見つかりません。Claude subagent にフォールバックします。"
+                "codex CLI が見つかりません。Claude subagent でのフォールバック可否を確認してください。"
             )
 
     if msgs:

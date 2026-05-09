@@ -87,8 +87,12 @@ def find_uncited_claims(text: str) -> list[str]:
 
 
 def main() -> int:
-    payload = json.loads(sys.stdin.read() or "{}")
-    inp = payload.get("tool_input", {})
+    raw = sys.stdin.read() or "{}"
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return 0
+    inp = payload.get("tool_input", {}) or {}
     path = inp.get("file_path", "")
     if not is_doc_path(path):
         return 0

@@ -15,8 +15,14 @@ import sys
 from pathlib import Path
 
 
+def _project_root() -> Path:
+    import os
+    root = os.environ.get("CLAUDE_PROJECT_DIR")
+    return Path(root).resolve() if root else Path.cwd().resolve()
+
+
 def load_routing_table() -> dict[str, list[str]]:
-    p = Path(".claude/routing-keywords.json")
+    p = _project_root() / ".claude" / "routing-keywords.json"
     if not p.exists():
         return {}
     try:
@@ -49,7 +55,11 @@ def find_skill_matches(prompt: str, table: dict) -> list[tuple[str, str]]:
 
 
 def main() -> int:
-    payload = json.loads(sys.stdin.read() or "{}")
+    raw = sys.stdin.read() or "{}"
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return 0
     prompt = payload.get("prompt", "")
     if not prompt.strip():
         return 0
@@ -65,11 +75,11 @@ def main() -> int:
 
     lines: list[str] = []
     if agent_hits:
-        lines.append("[hint] 推奨エージェント:")
+        lines.append("[agent-router] 推奨エージェント:")
         for agent, kw in agent_hits[:3]:
             lines.append(f"  - {agent}（キーワード: {kw}）")
     if skill_hits:
-        lines.append("[hint] ショートカット skill:")
+        lines.append("[agent-router] ショートカット skill:")
         for skill, kw in skill_hits[:3]:
             lines.append(f"  - {skill}（キーワード: {kw}）")
     print("\n".join(lines))

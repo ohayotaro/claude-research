@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
-"""PostToolUse hook on Bash. When a `python` / `pytest` / `uv run` command exits
-non-zero with a recognizable Python traceback, suggest delegating to
-codex-debugger.
+"""PostToolUse + PostToolUseFailure hook on Bash. When a `python` / `pytest`
+/ `uv run` command exits non-zero (or fails outright) with a recognizable
+Python traceback, suggest delegating to codex-debugger.
 
-We do not auto-launch the agent — only nudge. Auto-launch would surprise users
-during routine debugging.
+We do not auto-launch the agent — only nudge. Auto-launch would surprise
+users during routine debugging.
+
+The hook payload schema we expect downstream codex-debugger to receive
+(via the orchestrator) is:
+  {run_id?, script_path, traceback, env, last_commit?}
+We surface a structured snippet here; the orchestrator builds the rest.
 """
 
 from __future__ import annotations
@@ -18,15 +23,23 @@ RUNNER_RE = re.compile(r"\b(uv\s+run\s+python|python3?|pytest)\b")
 
 
 def main() -> int:
-    payload = json.loads(sys.stdin.read() or "{}")
-    inp = payload.get("tool_input", {})
+    raw = sys.stdin.read() or "{}"
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return 0
+    inp = payload.get("tool_input", {}) or {}
     cmd = inp.get("command", "")
-    response = payload.get("tool_response", {})
+    response = payload.get("tool_response", {}) or {}
     stderr = response.get("stderr", "") or ""
     stdout = response.get("stdout", "") or ""
     exit_code = response.get("exit_code")
+    phase = payload.get("hook_event_name", "")
 
-    if exit_code in (0, None):
+    is_failure = phase == "PostToolUseFailure" or (
+        exit_code not in (0, None)
+    )
+    if not is_failure:
         return 0
     if not RUNNER_RE.search(cmd):
         return 0

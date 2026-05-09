@@ -9,16 +9,26 @@ audit when each session ended.
 from __future__ import annotations
 
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 
+def _project_root() -> Path:
+    root = os.environ.get("CLAUDE_PROJECT_DIR")
+    return Path(root).resolve() if root else Path.cwd().resolve()
+
+
 def main() -> int:
-    payload = json.loads(sys.stdin.read() or "{}")
+    raw = sys.stdin.read() or "{}"
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        payload = {}
     reason = payload.get("reason", "unknown")
     ts = datetime.now(timezone.utc).isoformat()
-    log = Path(".claude/logs/sessions.log")
+    log = _project_root() / ".claude" / "logs" / "sessions.log"
     log.parent.mkdir(parents=True, exist_ok=True)
     with log.open("a", encoding="utf-8") as f:
         f.write(f"{ts} session_end reason={reason}\n")
