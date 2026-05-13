@@ -36,7 +36,7 @@ The full routing rules live in `.claude/rules/agent-routing.md`. Hooks under `.c
 
 - Never modify `.claude/` files unless the user explicitly asks. This includes agents, skills, hooks, rules, and settings.
 - Never delete data under `data/`. Append-only. If a result is wrong, write a new `run_id`.
-- Every **non-original factual claim** in `docs/research/*.md` and `docs/paper/*` must carry a `[@citekey]` referring to `docs/references.bib`. Own contributions, definitions you introduce, and common knowledge are exempt — see `.claude/rules/citation-rigor.md` for the full rule. The `citation-guard` hook nudges (does not block).
+- Every **non-original factual claim** in `docs/research/*.md` and `docs/paper/<paper_id>/{draft.md,main.tex,review-*.md,rebuttal.md}` must carry a `[@citekey]` referring to `docs/references.bib`. Own contributions, definitions you introduce, and common knowledge are exempt — see `.claude/rules/citation-rigor.md` for the full rule. The `citation-guard` hook nudges (does not block).
 - Every experiment run must produce `data/results/<run_id>/metadata.json` with `seed`, `git_rev`, `python_version`, `package_versions`, `started_at`, `finished_at`. The `reproducibility-check` hook enforces this.
 - Negative results are reported. Do not hide failures.
 
@@ -65,7 +65,19 @@ hypotheses: []
 output_language:
   user_dialogue: ja
   paper: en
+# Root-level paper_format / target_venue are INIT-TIME defaults only.
+# They seed the initial `papers:` entry and provide defaults for /add-paper.
+# Runtime path/format resolution MUST read `papers[id == <paper_id>]`.
+# See .claude/rules/multi-paper.md §3.2.
 paper_format: markdown_bibtex   # or: latex
+target_venue: null              # e.g. "NeurIPS 2026" / "Nature Communications"
+papers:                         # populated by /init-research and /add-paper
+  - id: main
+    title: null
+    venue: null
+    paper_format: markdown_bibtex
+    status: drafting            # drafting | review | submitted | accepted | published
+    derived_from: null          # weak lineage hint; null OR another paper_id
 runtime:
   language: python
   manager: uv
@@ -73,7 +85,6 @@ runtime:
 external_cli:
   codex: auto                   # auto | required | disabled
   gemini: auto
-target_venue: null              # e.g. "NeurIPS 2026" / "Nature Communications"
 ethics:
   irb_required: false
   data_sensitivity: none        # none | low | medium | high
@@ -88,6 +99,7 @@ viz_preferences:
 
 - Until `status` becomes `initialized`, your first action when the user starts work should be to suggest `/init-research`.
 - The user's free-text theme and RQ may be written in Japanese; agents must translate to English when populating `docs/research/`.
+- Multi-paper repositories are supported via the `papers:` registry. See `.claude/rules/multi-paper.md` for the resolution rules, layout, and migration policy.
 <!-- ZONE_B_END -->
 
 ---
@@ -103,6 +115,7 @@ active_agent: null
 last_skill_run: null
 last_run_id: null
 recent_artifacts: []
+last_paper_id: null             # hint only — never used as silent default in resolution
 next_action: "Run /init-research to bootstrap the project."
 notes: ""
 ```

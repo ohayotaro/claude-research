@@ -4,9 +4,9 @@ description: Bootstrap a new research project. Interactively collects domain, th
 when_to_use: First skill in a fresh project. Also re-runnable to update Zone B.
 inputs: User answers via AskUserQuestion (Japanese)
 outputs:
-  - CLAUDE.md (Zone B updated)
+  - CLAUDE.md (Zone B updated, including seed papers: [{id: main, ...}])
   - docs/research/{lit-review,gaps,hypotheses,methodology,analysis,discussion}.md (placeholders)
-  - docs/paper/draft.md or docs/paper/main.tex (placeholder)
+  - docs/paper/main/draft.md or docs/paper/main/main.tex (placeholder for the seed paper)
   - docs/references.bib (empty)
   - src/{experiments,analysis,utils}/__init__.py
   - data/{raw,processed,results}/.gitkeep
@@ -37,7 +37,17 @@ Initializes a research project from the orchestrator template. The orchestrator 
    - データ機微度（ethics.data_sensitivity）— none / low / medium / high.
    - IRB必要か（ethics.irb_required）— bool.
    - 図表スタイルのデフォルト（viz_preferences.default_profile）— `default` / `publication` / `presentation`. After init, the user can add custom profiles by editing `src/utils/viz.py` `STYLE_PROFILES` and switch by editing this Zone B field. The viz-reviewer agent critiques rendered figures regardless of which profile is chosen.
-3. **Build a Zone B YAML** from the answers. Preserve the user's free-text RQ verbatim (Japanese OK in Zone B). Keep `status: initialized`.
+3. **Build a Zone B YAML** from the answers. Preserve the user's free-text RQ verbatim (Japanese OK in Zone B). Keep `status: initialized`. Always emit a `papers:` registry with one seed entry:
+   ```yaml
+   papers:
+     - id: main
+       title: null
+       venue: <root target_venue from the answers, or null>
+       paper_format: <root paper_format from the answers>
+       status: drafting
+       derived_from: null
+   ```
+   The root-level `paper_format` and `target_venue` are kept as init-time defaults (per `.claude/rules/multi-paper.md` §3.2). Runtime resolution always reads `papers[id == <paper_id>]`, never the root.
 4. **Write Zone B** by replacing the content between `<!-- ZONE_B_BEGIN -->` and `<!-- ZONE_B_END -->` in `CLAUDE.md`. Do not touch Zone A or Zone C.
 5. **Scaffold directories** (idempotent):
    ```
@@ -52,15 +62,15 @@ Initializes a research project from the orchestrator template. The orchestrator 
    - `docs/research/lit-review.md` — header only.
    - `docs/research/gaps.md`, `hypotheses.md`, `methodology.md`, `analysis.md`, `discussion.md` — header only.
    - `docs/references.bib` — empty.
-   - If `paper_format == markdown_bibtex`: `docs/paper/draft.md` with the front matter from `paper-writer` agent's contract.
-   - If `paper_format == latex`: `docs/paper/main.tex` with a minimal article preamble + `\bibliography{../references}`.
+   - If `paper_format == markdown_bibtex`: `docs/paper/main/draft.md` with the front matter from `paper-writer` agent's contract (include `paper_id: main`).
+   - If `paper_format == latex`: `docs/paper/main/main.tex` with a minimal article preamble + `\bibliography{../../references}`.
    - `src/experiments/__init__.py`, `src/analysis/__init__.py`, `src/utils/__init__.py` (empty).
    - **Language-scoped starter scripts**: read Zone B `runtime.language` (default `python`) and copy from `.claude/templates/<language>/` to `src/utils/`:
      - For `python`: `repro.py` (reproducibility metadata helper) and `viz.py` (publication-quality matplotlib styling, Okabe-Ito palette, `save_figure`).
      - If `.claude/templates/<language>/` does not exist, fall back to `python/` and warn the user that the orchestrator does not ship native recipes for `<language>` yet (R / Julia / Stata are placeholders for future expansion).
    - `tests/test_smoke.py` — imports each src module to check the package is wired.
    - `data/raw/.gitkeep`, `data/processed/.gitkeep`, `data/results/.gitkeep`, `notebooks/.gitkeep`.
-7. **Write `.claude/paper-template-config.json`** with `{"paper_format": "...", "target_venue": "..."}`.
+7. **Write `.claude/paper-template-config.json`** with `{"default_paper_format": "...", "default_target_venue": "..."}`. This is an init-time default record; runtime path resolution uses Zone B `papers:` instead (see `.claude/rules/multi-paper.md`).
 8. **Append** to `.claude/logs/init-research.log` an ISO-stamped record of the run.
 9. **Update Zone C** of `CLAUDE.md` to set `current_phase: literature` and `next_action: "Run /literature-review"`.
 10. **Report** to the user (Japanese) a summary: paths created, next suggested skill.
@@ -69,6 +79,7 @@ Initializes a research project from the orchestrator template. The orchestrator 
 
 - Re-running `/init-research` is allowed and **only** rewrites Zone B and `paper-template-config.json`. It does **not** overwrite any existing `docs/research/*.md` content (only creates them if absent).
 - It does **not** touch existing files under `src/`, `data/`, `tests/`.
+- It does **not** modify an existing `papers:` registry with more than one entry — only seeds it when absent. To add additional papers, use `/add-paper`.
 
 ## Hard rules
 

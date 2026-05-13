@@ -1,15 +1,15 @@
 {
-  "_comment": "Written by /init-research. paper-writer reads this to decide format.",
-  "paper_format": "markdown_bibtex",
-  "target_venue": null,
+  "_comment": "Init-time defaults written by /init-research. Skills/agents MUST NOT read this at runtime — read CLAUDE.md Zone B papers[id == <paper_id>] instead. See .claude/rules/multi-paper.md §3.2.",
+  "default_paper_format": "markdown_bibtex",
+  "default_target_venue": null,
   "templates": {
     "markdown_bibtex": {
-      "main_path": "docs/paper/draft.md",
+      "main_path": "docs/paper/{paper_id}/draft.md",
       "bib_path": "docs/references.bib",
       "front_matter": true
     },
     "latex": {
-      "main_path": "docs/paper/main.tex",
+      "main_path": "docs/paper/{paper_id}/main.tex",
       "bib_path": "docs/references.bib",
       "preamble_path": "docs/paper/_template/preamble.tex"
     }

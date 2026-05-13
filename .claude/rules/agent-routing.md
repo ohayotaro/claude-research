@@ -2,6 +2,8 @@
 
 The orchestrator is Claude Opus. It does **not** implement; it integrates results from specialists. This file is the canonical routing matrix.
 
+For multi-paper workflows (paper_id resolution, layout, lazy migration), see `.claude/rules/multi-paper.md`. The orchestrator MUST resolve `paper_id` before delegating to `paper-writer` or `peer-reviewer`.
+
 ## Specialists
 
 | Agent | Backed by | Best at |

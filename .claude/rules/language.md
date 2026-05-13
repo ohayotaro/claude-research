@@ -20,7 +20,7 @@ There is exactly one Japanese-language surface in this repository: **the chat be
 - `CLAUDE.md` (Zones A, B, C).
 - `README.md` is bilingual by exception: the primary user audience is Japanese-speaking, so onboarding sections (Quick start, update flow explanations, troubleshooting) may be primarily Japanese. Authoritative reference content (skill / agent tables, layout, Credits) stays in English so it matches the source-of-truth files those tables describe.
 - All `docs/research/*.md` (lit-review, gaps, hypotheses, methodology, analysis, discussion).
-- All `docs/paper/*` (draft.md / main.tex / review-N.md / changelog.md / rebuttal.md).
+- All `docs/paper/<paper_id>/*` (draft.md / main.tex / review-N.md / changelog.md / rebuttal.md). See `.claude/rules/multi-paper.md` for the per-paper layout.
 - `docs/references.bib`.
 - All agent → agent / agent → Codex / agent → Gemini delegation prompts and responses.
 - All logs under `.claude/logs/`.

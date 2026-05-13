@@ -38,7 +38,25 @@ def _project_root() -> Path:
 
 
 def is_doc_path(path: str) -> bool:
-    """Return True iff `path` is a Markdown/LaTeX file under <project>/docs/.
+    """Return True iff `path` is a Markdown/LaTeX file under <project>/docs/
+    that the citation-guard should scan.
+
+    Scanned:
+    - docs/research/**/*.md
+    - docs/paper/<paper_id>/draft.md
+    - docs/paper/<paper_id>/main.tex
+    - docs/paper/<paper_id>/review-*.md
+    - docs/paper/<paper_id>/rebuttal.md
+
+    Skipped (paths under docs/, but not subject to citation rigor):
+    - docs/paper/<paper_id>/submissions/**     (bundle copies — would double-flag)
+    - docs/paper/<paper_id>/changelog.md       (bullet log)
+    - docs/release/**                          (release manifests / data cards)
+
+    Legacy flat layout (docs/paper/draft.md, docs/paper/main.tex,
+    docs/paper/review-*.md, docs/paper/rebuttal.md) is also scanned for
+    backward compatibility until the user runs lazy migration. See
+    .claude/rules/multi-paper.md §5.
 
     Claude Code passes `tool_input.file_path` as an absolute path, so we
     relativize against the project root before checking.
@@ -46,13 +64,40 @@ def is_doc_path(path: str) -> bool:
     if not path:
         return False
     p = Path(path)
-    if not (p.suffix in {".md", ".tex"}):
+    if p.suffix not in {".md", ".tex"}:
         return False
     try:
         rel = p.resolve().relative_to(_project_root())
     except ValueError:
         return False
-    return rel.parts and rel.parts[0] == "docs"
+    parts = rel.parts
+    if not parts or parts[0] != "docs":
+        return False
+
+    # docs/research/**: always scan.
+    if len(parts) >= 2 and parts[1] == "research":
+        return True
+
+    # docs/release/**: never scan.
+    if len(parts) >= 2 and parts[1] == "release":
+        return False
+
+    # docs/paper/...
+    if len(parts) >= 2 and parts[1] == "paper":
+        # Legacy flat: docs/paper/<file>
+        if len(parts) == 3:
+            return parts[2] != "changelog.md"
+        # Per-paper: docs/paper/<paper_id>/<file>
+        if len(parts) == 4:
+            if parts[3] == "changelog.md":
+                return False
+            return True
+        # Deeper: docs/paper/<paper_id>/submissions/... or other nested dirs.
+        # Never scan beyond depth 3 under docs/paper/.
+        return False
+
+    # Other docs/ subtrees: scan by default (covers stray .md files at docs/ root).
+    return True
 
 
 def extract_new_content(payload: dict) -> str:

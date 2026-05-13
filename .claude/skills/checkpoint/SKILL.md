@@ -31,9 +31,12 @@ last_run_id: <run_id or null>
 recent_artifacts:
   - <path1>
   - <path2>
+last_paper_id: <paper_id last operated on, or null>
 next_action: "<one-line user-facing instruction>"
 notes: |
   <2–4 line free-text — decisions, blockers, parallel tracks>
 ```
 
-5. **Report** to user (Japanese): summary of what was saved.
+`last_paper_id` is a **hint only**. Skills MUST NOT use it as a silent default — confirm with the user per `.claude/rules/multi-paper.md` §4. It may be surfaced in prompts (e.g. "前回は <id> を編集していました — 続けますか？") to reduce friction.
+
+5. **Report** to user (Japanese): summary of what was saved, including which paper was last touched if applicable.

@@ -18,7 +18,7 @@ Examples that **do not** require a citation:
 
 - All citations use Pandoc / BibTeX inline syntax: `[@authoryear_keyword]`. Multiple: `[@a2024_attn; @b2023_scaling]`.
 - Cite keys follow the pattern `<firstauthorlastname><year>_<short-tag>`, lowercase: `vaswani2017_attention`, `hinton2015_distillation`.
-- Every cite key in any `.md` or `.tex` file under `docs/` **must** resolve to an entry in `docs/references.bib`. The `citation-guard` hook checks this on every Write/Edit.
+- Every cite key in any `.md` or `.tex` file under `docs/research/` or under `docs/paper/<paper_id>/{draft.md,main.tex,review-*.md,rebuttal.md}` **must** resolve to an entry in `docs/references.bib`. The `citation-guard` hook checks this on every Write/Edit. Submission bundle copies under `docs/paper/<paper_id>/submissions/` and per-paper `changelog.md` are exempt — see `.claude/rules/multi-paper.md` §6.
 
 ## BibTeX entries
 
