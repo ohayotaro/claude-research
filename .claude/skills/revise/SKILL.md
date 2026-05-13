@@ -18,26 +18,28 @@ next_skill: /peer-review <paper_id> (next round) or /checkpoint
 
 ## Steps for the orchestrator
 
-1. **Resolve paper_id** per `.claude/rules/multi-paper.md` §4. Confirm with the user even when the registry has one entry.
+1. **Filesystem state check** per `.claude/rules/multi-paper.md` §5.1 before resolving paper_id. On state A (clean legacy), drive lazy migration per §5.2 with user confirmation. On state D/E, abort.
 
-2. **Pre-flight.** Verify the draft (`docs/paper/<paper_id>/draft.md` or `main.tex` per `papers[id == <paper_id>].paper_format`) and at least one `docs/paper/<paper_id>/review-<n>.md` exist. If not, abort and suggest `/write-paper <paper_id>` or `/peer-review <paper_id>`. Create `docs/paper/<paper_id>/changelog.md` with a one-line header if it does not yet exist.
+2. **Resolve paper_id** per `.claude/rules/multi-paper.md` §4. Confirm with the user even when the registry has one entry.
 
-3. **Locate the latest review** under `docs/paper/<paper_id>/` (highest `review-<n>.md`).
+3. **Pre-flight.** Verify the draft (`docs/paper/<paper_id>/draft.md` or `main.tex` per `papers[id == <paper_id>].paper_format`) and at least one `docs/paper/<paper_id>/review-<n>.md` exist. If not, abort and suggest `/write-paper <paper_id>` or `/peer-review <paper_id>`. Create `docs/paper/<paper_id>/changelog.md` with a one-line header if it does not yet exist.
 
-4. **Launch** `paper-writer` in revise mode with `paper_id`. For each review point, the agent:
+4. **Locate the latest review** under `docs/paper/<paper_id>/` (highest `review-<n>.md`).
+
+5. **Launch** `paper-writer` in revise mode with `paper_id`. For each review point, the agent:
    - Either applies a change (records `file:line` in the rebuttal scaffold's "Change made" column),
    - Or declines (records "no change — reason").
    - Blockers and majors **must** be addressed (applied or explicitly justified for non-application). Minors and nits may be deferred.
 
-5. **Re-run citation-guard logic mentally** — the hook will catch any new uncited claims when the file is written.
+6. **Re-run citation-guard logic mentally** — the hook will catch any new uncited claims when the file is written.
 
-6. **If the revision touches numbers or methodology**, this is a deviation: must be recorded under "Deviations" in `methodology.md` per the design-experiment skill's rule. Note that `methodology.md` is shared across papers — a deviation may affect siblings.
+7. **If the revision touches numbers or methodology**, this is a deviation: must be recorded under "Deviations" in `methodology.md` per the design-experiment skill's rule. Note that `methodology.md` is shared across papers — a deviation may affect siblings.
 
-7. **Append** to `docs/paper/<paper_id>/changelog.md`: `- <date> v<x.y>: addressed review-<n>.md (B:<count>, M:<count>, m:<count>, n:<count>)`.
+8. **Append** to `docs/paper/<paper_id>/changelog.md`: `- <date> v<x.y>: addressed review-<n>.md (B:<count>, M:<count>, m:<count>, n:<count>)`.
 
-8. **Recommend re-review** if any blocker remained unfixed, or if the change was substantial (> 25% of major comments addressed).
+9. **Recommend re-review** if any blocker remained unfixed, or if the change was substantial (> 25% of major comments addressed).
 
-9. **Update Zone C**: `current_phase: revision`, `last_paper_id: <paper_id>`.
+10. **Update Zone C**: `current_phase: revision`, `last_paper_id: <paper_id>`.
 
 ## Hard rules
 

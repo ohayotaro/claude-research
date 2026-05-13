@@ -66,8 +66,8 @@ Read `papers[id == <paper_id>].paper_format` from Zone B. NEVER read root `paper
 
 - Reference each figure with `Figure 1`, `Table 1`. Each must be cited in the text in numerical order before it appears.
 - Captions are self-contained (see writing-style.md).
-- For Markdown: embed via `![caption](../../../data/results/<run_id>/figures/fig1.pdf)` (three levels up from `docs/paper/<paper_id>/draft.md`).
-- For LaTeX: standard `figure` env with `\label{fig:name}` and `\ref{}`. `\includegraphics{../../data/results/<run_id>/figures/fig1.pdf}`.
+- For Markdown: embed via `![caption](../../../data/results/<run_id>/figures/fig1.pdf)` (three levels up from `docs/paper/<paper_id>/draft.md` to reach the repo root `data/` directory).
+- For LaTeX: standard `figure` env with `\label{fig:name}` and `\ref{}`. `\includegraphics{../../../data/results/<run_id>/figures/fig1.pdf}` (three levels up from `docs/paper/<paper_id>/main.tex`). The bibliography path is `../../references` because `references.bib` lives at `docs/references.bib` (two levels up).
 
 ### 5. Length discipline
 

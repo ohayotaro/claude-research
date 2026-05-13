@@ -23,21 +23,23 @@ Produces a clean, venue-compliant submission bundle from the resolved paper's dr
 
 ## Steps for the orchestrator
 
-1. **Resolve paper_id** per `.claude/rules/multi-paper.md` §4. `paper_id` is required; do not auto-select silently. If `paper_id` is omitted, AskUserQuestion to pick.
+1. **Filesystem state check** per `.claude/rules/multi-paper.md` §5.1 before resolving paper_id. On state A (clean legacy), drive lazy migration per §5.2 with user confirmation. On state D/E, abort.
 
-2. **Determine venue.** Precedence:
+2. **Resolve paper_id** per `.claude/rules/multi-paper.md` §4. `paper_id` is required; do not auto-select silently. If `paper_id` is omitted, AskUserQuestion to pick.
+
+3. **Determine venue.** Precedence:
    - `--venue=<slug>` argument if provided → one-shot override; Zone B is NOT mutated.
    - Else `papers[id == <paper_id>].venue` from Zone B.
    - Else ask the user. If the user wants the answer persisted, they must edit Zone B (or re-run `/add-paper` for a fresh entry).
 
-3. **Pre-flight.**
+4. **Pre-flight.**
    - Draft exists at `docs/paper/<paper_id>/{draft.md|main.tex}` per `papers[id == <paper_id>].paper_format`.
    - At least one `docs/paper/<paper_id>/review-<n>.md` exists with verdict `accept` / `minor revision` (warn loudly if all reviews are `major revision` / `reject`).
-   - A venue has been resolved (step 2).
+   - A venue has been resolved (step 3).
 
-4. **Determine bundle target.** Slugify the venue: `neurips-2026` → `docs/paper/<paper_id>/submissions/neurips-2026-r1/`. Round increments: `r1`, `r2`, ... If a folder for the same venue + round already exists, ask before overwriting.
+5. **Determine bundle target.** Slugify the venue: `neurips-2026` → `docs/paper/<paper_id>/submissions/neurips-2026-r1/`. Round increments: `r1`, `r2`, ... If a folder for the same venue + round already exists, ask before overwriting.
 
-5. **Launch** `paper-writer` in **submission mode** with `paper_id` and resolved venue. The agent:
+6. **Launch** `paper-writer` in **submission mode** with `paper_id` and resolved venue. The agent:
    - Re-reads the draft and venue requirements (from a known list of common venues, or the user-supplied URL).
    - Performs mechanical checks:
      - **Length**: word count vs venue limit; page count if LaTeX.
@@ -48,23 +50,23 @@ Produces a clean, venue-compliant submission bundle from the resolved paper's dr
      - **Anonymization**: scan for the user's name, affiliation, GitHub handle, "as we showed in [@selfcite]" patterns.
      - **Required statements**: ethics, data availability, code availability, funding, author contributions (per venue).
 
-6. **Optional figure pass**: if any figure was modified since the last `/review-figures`, suggest a fresh `/review-figures` before the bundle is finalized.
+7. **Optional figure pass**: if any figure was modified since the last `/review-figures`, suggest a fresh `/review-figures` before the bundle is finalized.
 
-7. **Assemble the bundle**:
+8. **Assemble the bundle**:
    - Copy / convert the resolved paper's draft into `docs/paper/<paper_id>/submissions/<venue>-<round>/` under the venue's expected layout (Markdown stays as `.md` + `references.bib`; LaTeX gets `main.tex` + `.bib` + figure files).
    - Embed all referenced figures from `data/results/<run_id>/figures/`.
    - Generate `manifest.json` listing every file with size + sha256. Include `paper_id` and `venue` at the top level for downstream tooling.
    - Generate `checklist.md` with: venue requirements (left column), status (auto-checked / needs-human / not-applicable), and per-row pointer to the file.
 
-8. **Surface to user** (Japanese, polite, no emojis):
+9. **Surface to user** (Japanese, polite, no emojis):
    - Paper id and bundle path.
    - Auto-checks passed / failed counts.
    - Items needing human review (anonymization, conflicts, etc.).
    - Suggested next: human-in-the-loop review of the checklist before upload.
 
-9. **Update Zone B status** for this paper: `papers[id == <paper_id>].status: submitted` (after the user confirms upload, not at bundle creation).
+10. **Update Zone B status** for this paper: `papers[id == <paper_id>].status: submitted` (after the user confirms upload, not at bundle creation).
 
-10. **Update Zone C**: `current_phase: submission`, `last_paper_id: <paper_id>`, `last_skill_run: prepare-submission`, `next_action: "Review checklist.md, then submit to <venue>"`.
+11. **Update Zone C**: `current_phase: submission`, `last_paper_id: <paper_id>`, `last_skill_run: prepare-submission`, `next_action: "Review checklist.md, then submit to <venue>"`.
 
 ## Hard rules
 

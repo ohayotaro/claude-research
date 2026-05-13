@@ -37,6 +37,23 @@ def _project_root() -> Path:
     return Path(root).resolve() if root else Path.cwd().resolve()
 
 
+_PAPER_PROSE_NAMES = {"draft.md", "main.tex", "rebuttal.md"}
+_REVIEW_RE = re.compile(r"^review-\d+\.md$")
+
+
+def _is_paper_prose_filename(name: str) -> bool:
+    """Whitelist of canonical paper-prose filenames subject to citation rigor.
+
+    Per .claude/rules/multi-paper.md §6:
+    - draft.md, main.tex, rebuttal.md
+    - review-<n>.md (n = positive integer)
+
+    Everything else under docs/paper/[<paper_id>/] (changelog.md, notes,
+    submissions bundle copies, _template/**) is exempt.
+    """
+    return name in _PAPER_PROSE_NAMES or bool(_REVIEW_RE.match(name))
+
+
 def is_doc_path(path: str) -> bool:
     """Return True iff `path` is a Markdown/LaTeX file under <project>/docs/
     that the citation-guard should scan.
@@ -83,17 +100,17 @@ def is_doc_path(path: str) -> bool:
         return False
 
     # docs/paper/...
+    # Whitelist per .claude/rules/multi-paper.md §6: scan only the canonical
+    # paper-prose filenames. Anything else under docs/paper/ (changelog.md,
+    # submissions/**, _template/**, ad-hoc notes) is exempt.
     if len(parts) >= 2 and parts[1] == "paper":
-        # Legacy flat: docs/paper/<file>
+        # Legacy flat: docs/paper/<file>  (depth 3, parts len == 3)
         if len(parts) == 3:
-            return parts[2] != "changelog.md"
-        # Per-paper: docs/paper/<paper_id>/<file>
+            return _is_paper_prose_filename(parts[2])
+        # Per-paper: docs/paper/<paper_id>/<file>  (depth 4, parts len == 4)
         if len(parts) == 4:
-            if parts[3] == "changelog.md":
-                return False
-            return True
-        # Deeper: docs/paper/<paper_id>/submissions/... or other nested dirs.
-        # Never scan beyond depth 3 under docs/paper/.
+            return _is_paper_prose_filename(parts[3])
+        # Deeper: docs/paper/<paper_id>/submissions/... etc. Never scan.
         return False
 
     # Other docs/ subtrees: scan by default (covers stray .md files at docs/ root).

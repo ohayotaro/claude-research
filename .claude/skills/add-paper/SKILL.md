@@ -30,7 +30,11 @@ Adds a new paper to the registry. The first paper in any repo is created by `/in
    - Not already present in Zone B `papers:` (uniqueness).
    On any failure, surface a precise reason in Japanese and abort. Do NOT normalize-and-continue; reject typos loudly.
 
-3. **Filesystem state check** per `.claude/rules/multi-paper.md` §5.1. If state D (ambiguous) or E (orphan registry entry) is detected, abort and surface the issue.
+3. **Filesystem state check** per `.claude/rules/multi-paper.md` §5.1.
+   - State A (clean legacy: `docs/paper/draft.md` or `docs/paper/main.tex` at depth 0, no nested dirs, no `papers:`): **drive the lazy migration first** per §5.2 — move the flat files into `docs/paper/main/` and append `{id: main, ...}` to Zone B. Then abort `/add-paper` with the message "migration complete; re-run /add-paper <paper_id> to add the new variant". Do NOT scaffold a sibling per-paper dir alongside a flat `draft.md` — that creates state D (ambiguous) on the next run.
+   - State B (already migrated): proceed normally.
+   - State C (partially manual, nested dirs without registry): drive the inference flow described in §5.1 to register the existing dirs first, then abort and ask the user to re-run.
+   - State D (ambiguous: both flat and nested) or State E (orphan registry entry): abort and surface the issue.
 
 4. **Run the questionnaire** via `AskUserQuestion` (Japanese):
    - 論文タイトル（title） — free text; null if undecided.

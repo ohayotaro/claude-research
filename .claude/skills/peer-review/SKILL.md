@@ -18,28 +18,30 @@ next_skill: /revise <paper_id>
 
 ## Steps for the orchestrator
 
-1. **Resolve paper_id** per `.claude/rules/multi-paper.md` §4. Always confirm with the user even if the registry has only one entry.
+1. **Filesystem state check** per `.claude/rules/multi-paper.md` §5.1 before resolving paper_id. If state A (clean legacy: `docs/paper/draft.md` or `main.tex` at depth 0, no nested dirs, no `papers:`) is detected, drive the lazy migration per §5.2 — show the planned `git mv` operations + Zone B patch, require user confirmation, execute, then continue. State D (ambiguous) and E (orphan registry) → abort and surface the issue. Do NOT bypass this check; it is the only safe entry point for legacy single-paper repos.
 
-2. **Pre-flight.**
+2. **Resolve paper_id** per `.claude/rules/multi-paper.md` §4. Always confirm with the user even if the registry has only one entry.
+
+3. **Pre-flight.**
    - The resolved paper's draft exists at `docs/paper/<paper_id>/{draft.md|main.tex}` per its `paper_format`. If missing, abort and suggest `/write-paper <paper_id>`.
    - Codex available — if not, warn the user that the review will fall back to a Claude critic and is weaker.
 
-3. **Launch** `peer-reviewer` with `paper_id` in the delegation prompt. The agent:
+4. **Launch** `peer-reviewer` with `paper_id` in the delegation prompt. The agent:
    - Picks the next `review-<n>.md` filename **scoped to this paper** (highest existing under `docs/paper/<paper_id>/` plus 1).
    - Reads the resolved paper's draft (format from `papers[id == <paper_id>].paper_format`).
    - Uses `papers[id == <paper_id>].venue` as the target venue in the Codex prompt.
    - Drives Codex and verifies Codex's claims against the actual files.
    - Logs Codex I/O to `.claude/logs/cli/<ISO>-codex-review-<paper_id>-<n>.md`.
 
-4. **Receive** the structured review. Surface to the user (Japanese):
+5. **Receive** the structured review. Surface to the user (Japanese):
    - Paper id and review number.
    - Overall recommendation (accept / minor / major / reject).
    - Counts: blockers, majors, minors, nits.
    - Top 3 issues to address first.
 
-5. **Update Zone B status** for this paper: `papers[id == <paper_id>].status: review` (if currently `drafting`).
+6. **Update Zone B status** for this paper: `papers[id == <paper_id>].status: review` (if currently `drafting`).
 
-6. **Update Zone C**: `current_phase: review`, `last_paper_id: <paper_id>`, `next_action: "Run /revise <paper_id> to address review-<n>.md"`.
+7. **Update Zone C**: `current_phase: review`, `last_paper_id: <paper_id>`, `next_action: "Run /revise <paper_id> to address review-<n>.md"`.
 
 ## Hard rules
 

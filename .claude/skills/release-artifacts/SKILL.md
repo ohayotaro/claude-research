@@ -26,23 +26,25 @@ A release is **repo-level**: a single deposit may cite one or more papers from t
 
 ## Steps for the orchestrator
 
-1. **Resolve which papers to include.**
+1. **Filesystem state check** per `.claude/rules/multi-paper.md` §5.1 before resolving papers. On state A (clean legacy: `docs/paper/draft.md` or `main.tex` at depth 0, no nested dirs, no `papers:`), drive lazy migration per §5.2 with user confirmation. On state D/E, abort. A release that runs through migration must surface the migration result to the user before continuing.
+
+2. **Resolve which papers to include.**
    - If `--papers=<id1>,<id2>` is provided, validate each id against Zone B `papers:` (each must exist).
    - Else AskUserQuestion presenting the full registry with id / title / status; user picks ≥ 1.
    - If exactly one paper exists in the registry and `--papers` is omitted, still confirm with the user (no silent default).
 
-2. **Pre-flight.**
+3. **Pre-flight.**
    - At least one `data/results/<run_id>/` exists with a complete `metadata.json` (otherwise nothing to archive).
    - For each selected `paper_id`: `docs/paper/<paper_id>/draft.md` (or `main.tex` per `papers[id == <paper_id>].paper_format`) exists — releases must be paired with at least one paper.
    - `CLAUDE.md` Zone B `ethics.data_sensitivity`: if `medium` / `high`, abort with a clear message — sensitive data needs an IRB-approved release plan, not this generic skill.
 
-3. **Determine release tag.** Use `--tag` if provided; else default to `v<major>.<minor>` if the user supplies a version, else `release-<ISO-date>`. Check git tags for collisions; suggest a bump. Releases live FLAT under `docs/release/<tag>/` — they are not nested by `paper_id`.
+4. **Determine release tag.** Use `--tag` if provided; else default to `v<major>.<minor>` if the user supplies a version, else `release-<ISO-date>`. Check git tags for collisions; suggest a bump. Releases live FLAT under `docs/release/<tag>/` — they are not nested by `paper_id`.
 
-4. **License check.**
+5. **License check.**
    - Repo root must have a LICENSE file. If missing, ask the user which license to add (default: MIT for code; CC-BY-4.0 for data; CC0 for raw data without privacy concerns).
    - Each `data/raw/<file>.README.md` sidecar must declare a license / source license. Flag any missing.
 
-5. **Datacard generation** (`datacard.md`). Sections:
+6. **Datacard generation** (`datacard.md`). Sections:
    - Purpose / overview.
    - Composition (datasets, sizes, formats).
    - Provenance per dataset (from raw README sidecars).
@@ -53,31 +55,31 @@ A release is **repo-level**: a single deposit may cite one or more papers from t
    - License.
    - Citation (cff format snippet).
 
-6. **Code-release packaging.**
+7. **Code-release packaging.**
    - Generate `manifest.json` with sha256 of every file under `src/`, `tests/`, `data/processed/`, `data/results/<run_id>/`, and `docs/paper/<paper_id>/` for each selected `paper_id`.
    - Top level of `manifest.json` includes `"papers": ["<id1>", "<id2>", ...]` so downstream tooling can resolve which papers a deposit covers.
    - Exclude `data/raw/` if `data_sensitivity != none` (privacy-preserving release); include otherwise.
    - Run `/lint` once to confirm green; record the result in the manifest.
 
-7. **CITATION.cff.**
+8. **CITATION.cff.**
    - Author block from a `CITATION.cff` template the user fills, OR auto-extract from git log + Zone B if Zone B has author info.
    - Title: if one paper is selected, use its title; if multiple, use the repo theme from Zone B and list paper titles under `references`.
    - Version = release tag.
    - DOI placeholder (filled after Zenodo registration).
    - `references:` block lists each selected paper's title / venue / status.
 
-8. **Zenodo deposition payload** (`zenodo.json`).
+9. **Zenodo deposition payload** (`zenodo.json`).
    - Pre-filled with title, description (paper abstract — concatenated if multiple papers, with a divider), creators, keywords (from Zone B), license, related identifiers (paper DOIs when known, one per selected paper).
    - User uploads the bundle to Zenodo and pastes the resulting DOI back into `CITATION.cff`.
 
-9. **Surface to user** (Japanese, polite, no emojis):
-   - Bundle path: `docs/release/<release-tag>/`.
-   - Selected papers (id / title).
-   - License decisions made.
-   - Items needing human review (DOI placeholder, sensitive data exclusions).
-   - Step-by-step Zenodo / OSF upload instructions inline (the skill does not auto-upload).
+10. **Surface to user** (Japanese, polite, no emojis):
+    - Bundle path: `docs/release/<release-tag>/`.
+    - Selected papers (id / title).
+    - License decisions made.
+    - Items needing human review (DOI placeholder, sensitive data exclusions).
+    - Step-by-step Zenodo / OSF upload instructions inline (the skill does not auto-upload).
 
-10. **Update Zone C**: `current_phase: release`, `last_skill_run: release-artifacts`, `next_action: "Upload bundle to Zenodo, then update CITATION.cff with the resulting DOI"`. Set `last_paper_id` to the first selected paper id (or null if multiple).
+11. **Update Zone C**: `current_phase: release`, `last_skill_run: release-artifacts`, `next_action: "Upload bundle to Zenodo, then update CITATION.cff with the resulting DOI"`. Set `last_paper_id` to the first selected paper id (or null if multiple).
 
 ## Hard rules
 
