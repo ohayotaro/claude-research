@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "_comment": "Hook commands use ${CLAUDE_PROJECT_DIR} so they resolve to absolute paths regardless of the shell's cwd at hook execution time. Without this, hooks fail with 'No such file or directory' when Claude Code is started from a parent or unrelated directory.",
+  "_comment": "Hook commands use ${CLAUDE_PROJECT_DIR} so they resolve to absolute paths regardless of the shell's cwd at hook execution time.",
   "hooks": {
     "SessionStart": [
       {
@@ -24,21 +24,6 @@
         ]
       }
     ],
-    "UserPromptSubmit": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/agent-router.py"
-          },
-          {
-            "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/research-keyword-detector.py"
-          }
-        ]
-      }
-    ],
     "PreToolUse": [
       {
         "matcher": "Write|Edit|MultiEdit",
@@ -48,25 +33,12 @@
             "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/citation-guard.py"
           }
         ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/log-cli-tools.py"
-          }
-        ]
       }
     ],
     "PostToolUse": [
       {
         "matcher": "Bash",
         "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/log-cli-tools.py"
-          },
           {
             "type": "command",
             "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/error-to-codex.py"
@@ -87,10 +59,6 @@
       {
         "matcher": "Bash",
         "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/log-cli-tools.py"
-          },
           {
             "type": "command",
             "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/error-to-codex.py"

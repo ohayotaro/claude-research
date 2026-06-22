@@ -17,6 +17,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 REQUIRED_KEYS = {
     "run_id",
@@ -50,14 +51,20 @@ def _run_id_for(path: str) -> str | None:
     return parts[2]
 
 
+def _mapping(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
 def main() -> int:
     raw = sys.stdin.read() or "{}"
     try:
         payload = json.loads(raw)
     except json.JSONDecodeError:
         return 0
-    inp = payload.get("tool_input", {}) or {}
+    inp = _mapping(payload.get("tool_input", {}))
     path = inp.get("file_path", "")
+    if not isinstance(path, str):
+        return 0
     run_id = _run_id_for(path)
     if not run_id:
         return 0

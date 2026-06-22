@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Setup script for claude-research.
-# Detects optional CLI partners (codex, gemini) and bootstraps the Python env.
+# Detects Claude and Codex tooling and bootstraps the Python environment.
 # Idempotent: safe to run multiple times.
 
 set -euo pipefail
@@ -16,60 +16,51 @@ err()  { printf "\033[31m[err]\033[0m %s\n" "$*" >&2; }
 bold "claude-research setup"
 echo
 
-# --- uv ---------------------------------------------------------------
 if ! command -v uv >/dev/null 2>&1; then
-    err "uv not found. Install from https://github.com/astral-sh/uv and rerun."
+    err "uv not found. Install uv and rerun setup."
     exit 1
 fi
 ok "uv: $(uv --version)"
 
-# --- Python deps ------------------------------------------------------
 bold "Syncing Python dependencies via uv"
 uv sync --extra dev
 ok "Python environment ready"
 
-# --- Codex CLI (optional) --------------------------------------------
 CODEX_AVAILABLE=0
+CODEX_VERSION="unavailable"
 if command -v codex >/dev/null 2>&1; then
     CODEX_AVAILABLE=1
-    ok "codex CLI detected: $(codex --version 2>/dev/null || echo 'version unknown')"
+    CODEX_VERSION="$(codex --version 2>/dev/null || echo 'version unknown')"
+    ok "codex CLI detected: $CODEX_VERSION"
 else
-    warn "codex CLI not found. Strict review / logical verification will fall back to Claude subagents."
+    warn "codex CLI not found. Codex builder/reviewer tasks will be blocked until installed."
     warn "  Install: https://github.com/openai/codex"
 fi
 
-# --- Gemini CLI (optional) -------------------------------------------
-GEMINI_AVAILABLE=0
-if command -v gemini >/dev/null 2>&1; then
-    GEMINI_AVAILABLE=1
-    ok "gemini CLI detected"
-else
-    warn "gemini CLI not found. Multimodal / web research will fall back to Claude subagents."
-    warn "  Install: https://github.com/google-gemini/gemini-cli"
-fi
-
-# --- Claude Code CLI (required for the next step) --------------------
+CLAUDE_AVAILABLE=0
+CLAUDE_VERSION="unavailable"
 if command -v claude >/dev/null 2>&1; then
-    ok "claude CLI detected"
+    CLAUDE_AVAILABLE=1
+    CLAUDE_VERSION="$(claude --version 2>/dev/null || echo 'version unknown')"
+    ok "claude CLI detected: $CLAUDE_VERSION"
 else
-    warn "claude CLI not found on PATH. The orchestrator runs inside Claude Code —"
-    warn "  Install:        https://claude.com/code"
-    warn "  After install:  run 'claude' in this directory to start a session."
+    warn "claude CLI not found on PATH. Install Claude Code, then run 'claude' here."
 fi
 
-# --- Persist detection result ----------------------------------------
 mkdir -p .claude/logs
 cat > .claude/logs/setup-status.json <<EOF
 {
+  "schema_version": "2.0",
   "codex_available": $([ "$CODEX_AVAILABLE" = "1" ] && echo true || echo false),
-  "gemini_available": $([ "$GEMINI_AVAILABLE" = "1" ] && echo true || echo false),
+  "codex_version": "$CODEX_VERSION",
+  "claude_available": $([ "$CLAUDE_AVAILABLE" = "1" ] && echo true || echo false),
+  "claude_version": "$CLAUDE_VERSION",
   "uv_version": "$(uv --version | awk '{print $2}')",
   "checked_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 }
 EOF
 ok "Wrote .claude/logs/setup-status.json"
 
-# --- Directory scaffold (only created lazily by /init-research) ------
 echo
 bold "Next steps"
 echo "  1. Open this directory in Claude Code:    claude"

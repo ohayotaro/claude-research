@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -27,7 +27,7 @@ def main() -> int:
     except json.JSONDecodeError:
         payload = {}
     reason = payload.get("reason", "unknown")
-    ts = datetime.now(timezone.utc).isoformat()
+    ts = datetime.now(UTC).isoformat()
     log = _project_root() / ".claude" / "logs" / "sessions.log"
     log.parent.mkdir(parents=True, exist_ok=True)
     with log.open("a", encoding="utf-8") as f:

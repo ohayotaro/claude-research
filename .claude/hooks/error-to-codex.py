@@ -1,15 +1,10 @@
 #!/usr/bin/env python3
-"""PostToolUse + PostToolUseFailure hook on Bash. When a `python` / `pytest`
-/ `uv run` command exits non-zero (or fails outright) with a recognizable
-Python traceback, suggest delegating to codex-debugger.
+"""Suggest the canonical Codex debug path after Python execution failures.
 
-We do not auto-launch the agent — only nudge. Auto-launch would surprise
-users during routine debugging.
+The hook does not launch Codex. It nudges the Research Lead to create a task
+brief under `.claude/tasks/<task-id>/brief.md` and run:
 
-The hook payload schema we expect downstream codex-debugger to receive
-(via the orchestrator) is:
-  {run_id?, script_path, traceback, env, last_commit?}
-We surface a structured snippet here; the orchestrator builds the rest.
+    python scripts/codex_research.py debug <task-id> --prompt-file <brief>
 """
 
 from __future__ import annotations
@@ -17,9 +12,14 @@ from __future__ import annotations
 import json
 import re
 import sys
+from typing import Any
 
 PY_TB = re.compile(r"Traceback \(most recent call last\):", re.MULTILINE)
 RUNNER_RE = re.compile(r"\b(uv\s+run\s+python|python3?|pytest)\b")
+
+
+def _get_text_mapping(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
 
 
 def main() -> int:
@@ -28,13 +28,17 @@ def main() -> int:
         payload = json.loads(raw)
     except json.JSONDecodeError:
         return 0
-    inp = payload.get("tool_input", {}) or {}
+    inp = _get_text_mapping(payload.get("tool_input", {}))
     cmd = inp.get("command", "")
-    response = payload.get("tool_response", {}) or {}
+    if not isinstance(cmd, str):
+        return 0
+    response = _get_text_mapping(payload.get("tool_response", {}))
     stderr = response.get("stderr", "") or ""
     stdout = response.get("stdout", "") or ""
     exit_code = response.get("exit_code")
     phase = payload.get("hook_event_name", "")
+    if not isinstance(stderr, str) or not isinstance(stdout, str):
+        return 0
 
     is_failure = phase == "PostToolUseFailure" or (
         exit_code not in (0, None)
@@ -51,7 +55,9 @@ def main() -> int:
     last_lines = "\n".join(combined.strip().splitlines()[-6:])
     print(
         "[error-to-codex] Python 実行が失敗しました。"
-        "`codex-debugger` に root-cause 解析を依頼することを推奨します。\n"
+        "Codex debug task を作成し、"
+        "`python scripts/codex_research.py debug <task-id> --prompt-file "
+        ".claude/tasks/<task-id>/brief.md` で解析することを推奨します。\n"
         f"末尾抜粋:\n{last_lines}"
     )
     return 0

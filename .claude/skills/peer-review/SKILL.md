@@ -1,50 +1,24 @@
 ---
 name: peer-review
-description: Strict, structured peer review of the current draft via Codex. Produces docs/paper/<paper_id>/review-N.md.
-when_to_use: After /write-paper, before submission, and after each major revision.
-inputs:
-  - <paper_id> as optional positional argument (resolution per .claude/rules/multi-paper.md §4)
-  - docs/paper/<paper_id>/draft.md or docs/paper/<paper_id>/main.tex
-  - docs/research/{methodology,analysis}.md
-  - docs/references.bib
-outputs:
-  - docs/paper/<paper_id>/review-<n>.md
-  - .claude/logs/cli/<ISO>-codex-review-<paper_id>-<n>.md
-delegated_agent: peer-reviewer
-next_skill: /revise <paper_id>
+description: Run a fresh read-only Codex review of manuscript logic, reporting completeness, and evidence alignment.
+when_to_use: After a manuscript draft is ready for independent critique.
 ---
 
 # /peer-review
 
-## Steps for the orchestrator
+Use Codex reviewer through `scripts/codex_research.py review`.
 
-1. **Filesystem state check** per `.claude/rules/multi-paper.md` §5.1 before resolving paper_id. If state A (clean legacy: `docs/paper/draft.md` or `main.tex` at depth 0, no nested dirs, no `papers:`) is detected, drive the lazy migration per §5.2 — show the planned `git mv` operations + Zone B patch, require user confirmation, execute, then continue. State D (ambiguous) and E (orphan registry) → abort and surface the issue. Do NOT bypass this check; it is the only safe entry point for legacy single-paper repos.
+Inputs:
+- manuscript path
+- `docs/references.bib`
+- relevant `docs/research/**`
+- relevant `data/results/**/analysis.json`
 
-2. **Resolve paper_id** per `.claude/rules/multi-paper.md` §4. Always confirm with the user even if the registry has only one entry.
+Output:
+- `docs/paper/<paper_id>/review-<n>.md`
 
-3. **Pre-flight.**
-   - The resolved paper's draft exists at `docs/paper/<paper_id>/{draft.md|main.tex}` per its `paper_format`. If missing, abort and suggest `/write-paper <paper_id>`.
-   - Codex available — if not, warn the user that the review will fall back to a Claude critic and is weaker.
-
-4. **Launch** `peer-reviewer` with `paper_id` in the delegation prompt. The agent:
-   - Picks the next `review-<n>.md` filename **scoped to this paper** (highest existing under `docs/paper/<paper_id>/` plus 1).
-   - Reads the resolved paper's draft (format from `papers[id == <paper_id>].paper_format`).
-   - Uses `papers[id == <paper_id>].venue` as the target venue in the Codex prompt.
-   - Drives Codex and verifies Codex's claims against the actual files.
-   - Logs Codex I/O to `.claude/logs/cli/<ISO>-codex-review-<paper_id>-<n>.md`.
-
-5. **Receive** the structured review. Surface to the user (Japanese):
-   - Paper id and review number.
-   - Overall recommendation (accept / minor / major / reject).
-   - Counts: blockers, majors, minors, nits.
-   - Top 3 issues to address first.
-
-6. **Update Zone B status** for this paper: `papers[id == <paper_id>].status: review` (if currently `drafting`).
-
-7. **Update Zone C**: `current_phase: review`, `last_paper_id: <paper_id>`, `next_action: "Run /revise <paper_id> to address review-<n>.md"`.
-
-## Hard rules
-
-- Review numbering is scoped per `paper_id`. `docs/paper/main/review-3.md` and `docs/paper/workshop-x/review-1.md` are independent counters.
-- Use the per-paper `venue` and `paper_format` from Zone B `papers[id == <paper_id>]`. Never read root values at runtime.
-- Never review another paper's draft by mistake. The agent must verify the path it reads matches the resolved `paper_id`.
+Workflow:
+1. Create a task brief with the manuscript path and review rubric.
+2. Run `python scripts/codex_research.py review <task-id> --prompt-file .claude/tasks/<task-id>/brief.md`.
+3. Save the reviewer final message as `docs/paper/<paper_id>/review-<n>.md`.
+4. Do not let the reviewer modify files.

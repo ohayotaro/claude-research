@@ -15,7 +15,7 @@ import platform
 import random
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -44,7 +44,7 @@ def _package_versions(packages: list[str]) -> dict[str, str]:
 
 
 def make_run_id(args: dict[str, Any]) -> str:
-    ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%S")
+    ts = datetime.now(UTC).strftime("%Y-%m-%dT%H-%M-%S")
     h = hashlib.sha1(json.dumps(args, sort_keys=True, default=str).encode()).hexdigest()[:8]
     return f"{ts}_{h}"
 
