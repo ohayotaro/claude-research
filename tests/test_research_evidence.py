@@ -48,6 +48,21 @@ def valid_ledger(run_id: str = "run-1") -> dict[str, Any]:
     }
 
 
+def valid_metadata(run_id: str = "run-1") -> dict[str, Any]:
+    return {
+        "run_id": run_id,
+        "started_at": "2026-06-23T00:00:00Z",
+        "script": "src/experiments/run.py",
+        "args": {},
+        "seed": 1,
+        "git_rev": "abc123",
+        "python_version": "3.12.0",
+        "platform": "darwin",
+        "package_versions": {},
+        "hardware": {"cpu_count": 8},
+    }
+
+
 def test_validates_analysis_ledger(tmp_path: Path) -> None:
     evidence = load_evidence()
     ledger = tmp_path / "analysis.json"
@@ -96,3 +111,98 @@ def test_trace_scoped_result_ids(tmp_path: Path) -> None:
     report = evidence.trace_prose_result_ids(tmp_path)
     assert report.missing == []
     assert "run-1:R1" in report.referenced_scoped_result_ids
+
+
+def test_trace_release_datacard_result_ids(tmp_path: Path) -> None:
+    evidence = load_evidence()
+    run_dir = tmp_path / "data" / "results" / "run-1"
+    run_dir.mkdir(parents=True)
+    (run_dir / "analysis.json").write_text(json.dumps(valid_ledger()), encoding="utf-8")
+    release = tmp_path / "docs" / "release" / "v1.0.0"
+    release.mkdir(parents=True)
+    (release / "datacard.md").write_text(
+        "Supported claim [result:R1]. Missing claim [result:R2].",
+        encoding="utf-8",
+    )
+    report = evidence.trace_prose_result_ids(tmp_path)
+    assert "R1" in report.referenced_result_ids
+    assert any("datacard.md" in item and "R2" in item for item in report.missing)
+
+
+def test_strict_metadata_cross_validation(tmp_path: Path) -> None:
+    evidence = load_evidence()
+    run_dir = tmp_path / "data" / "results" / "run-1"
+    run_dir.mkdir(parents=True)
+    ledger = run_dir / "analysis.json"
+    ledger.write_text(json.dumps(valid_ledger("run-1")), encoding="utf-8")
+    (run_dir / "metadata.json").write_text(
+        json.dumps(valid_metadata("different-run")),
+        encoding="utf-8",
+    )
+    errors = evidence.validate_ledger(ledger, strict=True)
+    assert any("does not match ledger run_id" in error for error in errors)
+
+
+def test_strict_pvalue_range(tmp_path: Path) -> None:
+    evidence = load_evidence()
+    data = valid_ledger()
+    data["results"][0]["p_value"] = 1.2
+    ledger = tmp_path / "analysis.json"
+    ledger.write_text(json.dumps(data), encoding="utf-8")
+    errors = evidence.validate_ledger(ledger, strict=True)
+    assert any("p_value" in error for error in errors)
+
+
+def test_strict_interval_ordering(tmp_path: Path) -> None:
+    evidence = load_evidence()
+    data = valid_ledger()
+    data["results"][0]["interval"] = {"level": 0.95, "lower": 2.0, "upper": 1.0}
+    ledger = tmp_path / "analysis.json"
+    ledger.write_text(json.dumps(data), encoding="utf-8")
+    errors = evidence.validate_ledger(ledger, strict=True)
+    assert any("interval lower" in error for error in errors)
+
+
+def test_strict_duplicate_result_ids(tmp_path: Path) -> None:
+    evidence = load_evidence()
+    data = valid_ledger()
+    data["results"].append(dict(data["results"][0]))
+    ledger = tmp_path / "analysis.json"
+    ledger.write_text(json.dumps(data), encoding="utf-8")
+    errors = evidence.validate_ledger(ledger, strict=True)
+    assert any("duplicates R1" in error for error in errors)
+
+
+def test_non_strict_warnings_only(
+    tmp_path: Path, capsys: Any
+) -> None:
+    evidence = load_evidence()
+    data = valid_ledger()
+    data["results"][0]["p_value"] = -0.1
+    data["results"][0]["interval"] = {"level": 0.95, "lower": 2.0, "upper": 1.0}
+    data["results"].append(dict(data["results"][0]))
+    ledger = tmp_path / "analysis.json"
+    ledger.write_text(json.dumps(data), encoding="utf-8")
+    assert evidence.main(["validate-ledger", str(ledger)]) == 0
+    err = capsys.readouterr().err
+    assert "Warning:" in err
+    assert "p_value" in err
+    assert "duplicates R1" in err
+
+
+def test_ambiguous_unscoped_reference(
+    tmp_path: Path, capsys: Any
+) -> None:
+    evidence = load_evidence()
+    for run_id in ["run-1", "run-2"]:
+        run_dir = tmp_path / "data" / "results" / run_id
+        run_dir.mkdir(parents=True)
+        (run_dir / "analysis.json").write_text(
+            json.dumps(valid_ledger(run_id)),
+            encoding="utf-8",
+        )
+    prose = tmp_path / "docs" / "research"
+    prose.mkdir(parents=True)
+    (prose / "analysis.md").write_text("Claim [result:R1].", encoding="utf-8")
+    assert evidence.main(["trace-prose", "--repo-root", str(tmp_path)]) == 0
+    assert "ambiguous unscoped result ID R1" in capsys.readouterr().err

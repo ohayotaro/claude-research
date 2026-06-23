@@ -14,6 +14,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
+import yaml
+
 STATE_VALUES = {"queued", "running", "succeeded", "failed", "blocked", "cancelled"}
 PHASE_SANDBOX = {
     "plan": "read-only",
@@ -84,6 +86,7 @@ class Selection:
 class PhaseConfig:
     phase: str
     sandbox: str
+    command: Selection
     model: Selection
     effort: Selection
     output_path: Path
@@ -106,6 +109,149 @@ def repo_root_from(path: Path) -> Path:
     if proc.returncode == 0:
         return Path(proc.stdout.strip()).resolve()
     return path.resolve()
+
+
+def _default_zone_b_config() -> dict[str, Any]:
+    return {
+        "command": "codex",
+        "_command_source": "default",
+        "default_model": None,
+        "default_effort": None,
+        "profiles": dict(PROFILES),
+    }
+
+
+def _extract_zone_b_yaml(text: str) -> str:
+    zone_match = re.search(
+        r"<!-- ZONE_B_BEGIN -->(?P<body>.*?)<!-- ZONE_B_END -->",
+        text,
+        re.DOTALL,
+    )
+    if not zone_match:
+        raise ValueError("Zone B markers not found")
+    fence_match = re.search(
+        r"```yaml\s*(?P<yaml>.*?)```",
+        zone_match.group("body"),
+        re.DOTALL,
+    )
+    if not fence_match:
+        raise ValueError("Zone B yaml fence not found")
+    return fence_match.group("yaml")
+
+
+def load_zone_b_config(repo_root: Path) -> dict[str, Any]:
+    """Load Codex external CLI defaults from CLAUDE.md Zone B."""
+
+    config = _default_zone_b_config()
+    claude_md = repo_root / "CLAUDE.md"
+    try:
+        text = claude_md.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        print("[zone-b] Warning: CLAUDE.md not found; using Codex defaults.", file=sys.stderr)
+        return config
+
+    try:
+        raw_yaml = _extract_zone_b_yaml(text)
+        zone_b = yaml.safe_load(raw_yaml)
+    except Exception as exc:
+        print(f"[zone-b] Warning: malformed Zone B; using Codex defaults: {exc}", file=sys.stderr)
+        return config
+
+    if not isinstance(zone_b, dict):
+        print("[zone-b] Warning: Zone B is not a mapping; using Codex defaults.", file=sys.stderr)
+        return config
+
+    external_cli = zone_b.get("external_cli")
+    if external_cli is None:
+        return config
+    if not isinstance(external_cli, dict):
+        print(
+            "[zone-b] Warning: external_cli is not a mapping; using Codex defaults.",
+            file=sys.stderr,
+        )
+        return config
+
+    codex = external_cli.get("codex")
+    if codex is None:
+        return config
+    if codex == "auto":
+        config["_command_source"] = "zone_b_command"
+        return config
+    if isinstance(codex, str):
+        print(
+            "[zone-b] Warning: external_cli.codex scalar is not 'auto'; using Codex defaults.",
+            file=sys.stderr,
+        )
+        return config
+    if not isinstance(codex, dict):
+        print(
+            "[zone-b] Warning: external_cli.codex is not a mapping; using Codex defaults.",
+            file=sys.stderr,
+        )
+        return config
+
+    command = codex.get("command")
+    if isinstance(command, str) and command.strip():
+        config["command"] = command.strip()
+        config["_command_source"] = "zone_b_command"
+
+    default_model = codex.get("default_model")
+    if default_model is None or isinstance(default_model, str):
+        config["default_model"] = default_model
+    else:
+        print(
+            "[zone-b] Warning: external_cli.codex.default_model must be string or null; "
+            "ignoring.",
+            file=sys.stderr,
+        )
+
+    default_effort = codex.get("default_effort")
+    if default_effort is None:
+        config["default_effort"] = None
+    elif isinstance(default_effort, str):
+        if default_effort in ALLOWED_EFFORTS:
+            config["default_effort"] = default_effort
+        else:
+            print(
+                "[zone-b] Warning: external_cli.codex.default_effort "
+                f"{default_effort!r} is invalid; using Codex defaults.",
+                file=sys.stderr,
+            )
+    else:
+        print(
+            "[zone-b] Warning: external_cli.codex.default_effort must be string or null; "
+            "ignoring.",
+            file=sys.stderr,
+        )
+
+    profiles = codex.get("profiles")
+    if profiles is not None:
+        if isinstance(profiles, dict):
+            merged_profiles = dict(PROFILES)
+            for name, effort in profiles.items():
+                if isinstance(name, str) and isinstance(effort, str):
+                    if effort in ALLOWED_EFFORTS:
+                        merged_profiles[name] = effort
+                    else:
+                        print(
+                            "[zone-b] Warning: external_cli.codex.profiles "
+                            f"{name!r} effort {effort!r} is invalid; using Codex defaults.",
+                            file=sys.stderr,
+                        )
+                else:
+                    print(
+                        "[zone-b] Warning: external_cli.codex.profiles entries must be "
+                        "string-to-string; ignoring invalid entry.",
+                        file=sys.stderr,
+                    )
+            config["profiles"] = merged_profiles
+        else:
+            print(
+                "[zone-b] Warning: external_cli.codex.profiles must be a mapping; ignoring.",
+                file=sys.stderr,
+            )
+
+    return config
 
 
 def validate_task_id(task_id: str) -> str:
@@ -169,9 +315,13 @@ def git_head(repo_root: Path, runner: CommandRunner = subprocess) -> str:
     return proc.stdout.strip() or "unknown"
 
 
-def codex_version(repo_root: Path, runner: CommandRunner = subprocess) -> str:
+def codex_version(
+    repo_root: Path,
+    runner: CommandRunner = subprocess,
+    command: str = "codex",
+) -> str:
     proc = runner.run(
-        ["codex", "--version"],
+        [command, "--version"],
         cwd=repo_root,
         text=True,
         capture_output=True,
@@ -186,6 +336,7 @@ def select_model(
     explicit: str | None,
     env: dict[str, str],
     profile: str | None = None,
+    zone_b_config: dict[str, Any] | None = None,
 ) -> Selection:
     phase_model_env, _ = PHASE_EFFORT_ENV[phase]
     if explicit:
@@ -198,6 +349,8 @@ def select_model(
         return Selection(env[phase_model_env], phase_model_env)
     if env.get("CODEX_MODEL"):
         return Selection(env["CODEX_MODEL"], "CODEX_MODEL")
+    if zone_b_config and zone_b_config.get("default_model"):
+        return Selection(str(zone_b_config["default_model"]), "zone_b_default_model")
     return Selection(None, "user_default")
 
 
@@ -206,11 +359,17 @@ def select_effort(
     explicit: str | None,
     env: dict[str, str],
     profile: str | None = None,
+    zone_b_config: dict[str, Any] | None = None,
 ) -> Selection:
     _, phase_effort_env = PHASE_EFFORT_ENV[phase]
     if profile:
         source = "profile"
-        value = PROFILES[profile]
+        profiles = (
+            zone_b_config.get("profiles", PROFILES)
+            if zone_b_config is not None
+            else PROFILES
+        )
+        value = profiles[profile]
     elif explicit:
         source = "cli"
         value = explicit
@@ -220,6 +379,9 @@ def select_effort(
     elif env.get("CODEX_EFFORT"):
         source = "CODEX_EFFORT"
         value = env["CODEX_EFFORT"]
+    elif zone_b_config and zone_b_config.get("default_effort"):
+        source = "zone_b_default_effort"
+        value = str(zone_b_config["default_effort"])
     else:
         source = "phase_default"
         value = PHASE_DEFAULT_EFFORT[phase]
@@ -229,6 +391,17 @@ def select_effort(
             f"unsupported Codex effort {value!r}; expected one of {sorted(ALLOWED_EFFORTS)}"
         )
     return Selection(value, source)
+
+
+def select_command(env: dict[str, str], zone_b_config: dict[str, Any] | None = None) -> Selection:
+    if env.get("CODEX_CLI"):
+        return Selection(env["CODEX_CLI"], "CODEX_CLI")
+    if zone_b_config and zone_b_config.get("command"):
+        return Selection(
+            str(zone_b_config["command"]),
+            str(zone_b_config.get("_command_source", "zone_b_command")),
+        )
+    return Selection("codex", "default")
 
 
 def read_prompt(repo_root: Path, prompt_file: str | None, stdin_text: str | None) -> str:
@@ -253,6 +426,7 @@ def phase_config(
     profile: str | None = None,
     env: dict[str, str],
     stdin_text: str | None = None,
+    zone_b_config: dict[str, Any] | None = None,
 ) -> PhaseConfig:
     if phase not in PHASE_SANDBOX:
         raise ValueError(f"unknown phase: {phase}")
@@ -261,8 +435,9 @@ def phase_config(
     return PhaseConfig(
         phase=phase,
         sandbox=PHASE_SANDBOX[phase],
-        model=select_model(phase, model, env, profile),
-        effort=select_effort(phase, effort, env, profile),
+        command=select_command(env, zone_b_config),
+        model=select_model(phase, model, env, profile, zone_b_config),
+        effort=select_effort(phase, effort, env, profile, zone_b_config),
         profile=profile,
         output_path=directory / PHASE_OUTPUT[phase],
         prompt_text=prompt_text,
@@ -271,7 +446,7 @@ def phase_config(
 
 def build_codex_command(repo_root: Path, config: PhaseConfig) -> list[str]:
     cmd = [
-        "codex",
+        config.command.value or "codex",
         "--ask-for-approval",
         "never",
         "exec",
@@ -319,6 +494,7 @@ def write_state(
     git_head_before: str,
     git_head_after: str | None,
     requested_profile: str | None = None,
+    command: Selection | None = None,
     error: str | None = None,
 ) -> None:
     if status not in STATE_VALUES:
@@ -332,6 +508,8 @@ def write_state(
         "finished_at": finished_at,
         "exit_code": exit_code,
         "codex_cli_version": codex_version_value,
+        "codex_command": command.value if command else "codex",
+        "command_selection_source": command.source if command else "default",
         "sandbox": sandbox,
         "requested_profile": requested_profile,
         "requested_model": model.value,
@@ -420,7 +598,7 @@ def run_phase(
 
     started_at = utc_now()
     git_before = git_head(repo_root, runner)
-    version = codex_version(repo_root, runner)
+    version = codex_version(repo_root, runner, config.command.value or "codex")
     write_state(
         state_path,
         task_id=task_id,
@@ -431,6 +609,7 @@ def run_phase(
         exit_code=None,
         codex_version_value=version,
         sandbox=config.sandbox,
+        command=config.command,
         model=config.model,
         effort=config.effort,
         git_head_before=git_before,
@@ -445,6 +624,7 @@ def run_phase(
             "phase": config.phase,
             "sandbox": config.sandbox,
             "model_source": config.model.source,
+            "command_source": config.command.source,
             "effort": config.effort.value,
             "effort_source": config.effort.source,
         },
@@ -499,6 +679,7 @@ def run_phase(
         exit_code=exit_code,
         codex_version_value=version,
         sandbox=config.sandbox,
+        command=config.command,
         model=config.model,
         effort=config.effort,
         git_head_before=git_before,
@@ -565,6 +746,7 @@ def _phase_command(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 1
+    zone_b_config = load_zone_b_config(repo_root)
     try:
         config = phase_config(
             repo_root,
@@ -575,6 +757,7 @@ def _phase_command(args: argparse.Namespace) -> int:
             effort=args.effort,
             profile=profile,
             env=dict(os.environ),
+            zone_b_config=zone_b_config,
         )
     except ValueError as exc:
         directory = task_dir(repo_root, args.task_id) if TASK_ID_RE.match(args.task_id) else None

@@ -74,3 +74,33 @@ def test_shell_scripts_parse() -> None:
         cwd=ROOT,
         check=True,
     )
+
+
+def test_session_start_strips_yaml_quotes() -> None:
+    hook = load_hook("session-start.py")
+    parsed = hook.parse_kv(
+        "```yaml\n"
+        'status: "initialized"\n'
+        "theme: 'quoted theme'\n"
+        'next_action: "/literature-review"\n'
+        "nested:\n"
+        "  value: ignored\n"
+        "```\n"
+    )
+    assert parsed["status"] == "initialized"
+    assert parsed["theme"] == "quoted theme"
+    assert parsed["next_action"] == "/literature-review"
+    assert "value" not in parsed
+
+
+def test_session_start_null_normalization() -> None:
+    hook = load_hook("session-start.py")
+    parsed = hook.parse_kv(
+        "```yaml\n"
+        "last_run_id: null\n"
+        "active_codex_task: ~\n"
+        "```\n"
+    )
+    assert parsed["last_run_id"] is None
+    assert parsed["active_codex_task"] is None
+    assert hook.display_value(parsed["last_run_id"]) == "なし"

@@ -69,8 +69,6 @@ def test_author_skills_use_explicit_agent_fork() -> None:
         "extend-literature",
         "paper-deep-read",
         "identify-gaps",
-        "generate-hypothesis",
-        "design-experiment",
         "discuss-results",
         "write-paper",
         "revise",
@@ -81,3 +79,57 @@ def test_author_skills_use_explicit_agent_fork() -> None:
         )
         assert "context: fork" in text
         assert "agent: scientific-author" in text
+
+
+def _frontmatter(text: str) -> str:
+    if not text.startswith("---"):
+        return ""
+    return text.split("---", 2)[1]
+
+
+def test_no_skill_mixes_author_fork_with_codex_runner() -> None:
+    for path in (ROOT / ".claude" / "skills").rglob("SKILL.md"):
+        text = path.read_text(encoding="utf-8")
+        fm = _frontmatter(text)
+        mixes_author_fork = "context: fork" in fm and "agent: scientific-author" in fm
+        assert not (
+            mixes_author_fork and "codex_research.py" in text
+        ), f"author fork mixes Codex runner in {path}"
+
+
+def test_multi_phase_skills_have_explicit_invocations() -> None:
+    required = {
+        "generate-hypothesis": [
+            "PM-orchestrated multi-phase",
+            "scientific-author",
+            "hypothesis-writing",
+            "python scripts/codex_research.py review",
+            "Zone C",
+        ],
+        "design-experiment": [
+            "PM-orchestrated multi-phase",
+            "scientific-author",
+            "methodology-writing",
+            "python scripts/codex_research.py review",
+            "Zone C",
+        ],
+        "prepare-submission": [
+            "PM-orchestrated multi-phase",
+            "python scripts/codex_research.py build",
+            "submission-prose",
+            "submitted",
+        ],
+        "release-artifacts": [
+            "PM-orchestrated multi-phase",
+            "python scripts/codex_research.py build",
+            "release-prose",
+            "final explicit user approval",
+            "Zone C",
+        ],
+    }
+    for name, markers in required.items():
+        text = (ROOT / ".claude" / "skills" / name / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
+        for marker in markers:
+            assert marker in text, f"{marker!r} missing from {name}"

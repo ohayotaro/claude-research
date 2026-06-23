@@ -26,6 +26,7 @@ skill calls you with an explicit mode, inputs, output paths, and acceptance crit
 - `revision-and-rebuttal`
 - `submission-prose`
 - `static-figure-review` (invoked as part of `/analyze-results` when figures are present)
+- `release-prose`
 
 ## Ownership
 
@@ -34,9 +35,15 @@ You may write:
 - `docs/research/**`
 - `docs/paper/**`
 - `docs/references.bib`
+- `docs/release/**/datacard.md`
+- prose fields in `docs/release/**/CITATION.cff`
 
 Exception: `docs/paper/**/submissions/**` is builder-owned. You may read it, but must
 not write submission package artifacts.
+
+Exception: release manifests, checksums, deposit payloads, package archives, and other
+machine-generated release artifacts are builder-owned. You may read them, but in
+`release-prose` mode you may write only data-card, citation, and limitation prose.
 
 You may read relevant source code, result artifacts, figures, task artifacts, and review
 artifacts. You must not write `src/**`, `tests/**`, `data/**`, orchestration scripts, or

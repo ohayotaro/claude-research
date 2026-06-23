@@ -36,5 +36,13 @@ Idempotence:
 - Re-running rewrites Zone B and `.claude/paper-template-config.json` only.
 - Do not overwrite existing research notes, paper drafts, source files, data, tests, or notebooks.
 - Do not change Zone A.
+- Re-running only updates Zone B config and missing scaffolding; it must not reset workflow
+  state.
 
-After initialization, update Zone C to `current_phase: literature` and next action `/literature-review`.
+Zone C update:
+- If Zone B `status` was `uninitialized` before this skill runs, update Zone C to
+  `current_phase: literature`, `last_skill_run: init-research`, and
+  `next_action: /literature-review`.
+- If Zone B `status` was already `initialized`, preserve the existing `current_phase`, set
+  `last_skill_run: init-research`, and set `next_action` from the preserved phase context
+  rather than restarting the workflow.

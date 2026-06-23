@@ -32,6 +32,17 @@ REQUIRED_RESULT_KEYS = {
     "source_artifacts",
     "figure_paths",
 }
+REQUIRED_METADATA_KEYS = {
+    "run_id",
+    "started_at",
+    "script",
+    "args",
+    "seed",
+    "git_rev",
+    "python_version",
+    "platform",
+    "package_versions",
+}
 
 
 @dataclass(frozen=True)
@@ -43,6 +54,7 @@ class TraceabilityReport:
     referenced_result_ids: set[str]
     referenced_scoped_result_ids: set[str]
     missing: list[str]
+    warnings: list[str]
 
 
 def _load_json(path: Path) -> tuple[Any | None, list[str]]:
@@ -72,8 +84,8 @@ def _require_string(obj: dict[str, Any], key: str, errors: list[str]) -> None:
         errors.append(f"{key} must be a non-empty string")
 
 
-def validate_ledger(path: Path) -> list[str]:
-    """Return validation errors for one `analysis.json` ledger."""
+def _validate_ledger_schema(path: Path) -> list[str]:
+    """Return baseline schema errors for one `analysis.json` ledger."""
 
     data, errors = _load_json(path)
     if errors:
@@ -106,7 +118,6 @@ def validate_ledger(path: Path) -> list[str]:
         errors.append("results must be a non-empty list")
         return errors
 
-    seen_result_ids: set[str] = set()
     for index, result in enumerate(results):
         prefix = f"results[{index}]"
         if not isinstance(result, dict):
@@ -120,10 +131,6 @@ def validate_ledger(path: Path) -> list[str]:
         result_id = result.get("result_id")
         if not isinstance(result_id, str) or not result_id:
             errors.append(f"{prefix}.result_id must be a non-empty string")
-        elif result_id in seen_result_ids:
-            errors.append(f"{prefix}.result_id duplicates {result_id}")
-        else:
-            seen_result_ids.add(result_id)
 
         hypothesis_id = result.get("hypothesis_id")
         if not isinstance(hypothesis_id, str) or not hypothesis_id:
@@ -176,11 +183,89 @@ def validate_ledger(path: Path) -> list[str]:
     return errors
 
 
-def ledger_result_ids(repo_root: Path) -> tuple[set[str], set[str], list[str]]:
+def _validate_ledger_strict_checks(path: Path) -> list[str]:
+    """Return checks that are warnings unless strict mode is enabled."""
+
+    data, load_errors = _load_json(path)
+    if load_errors or not isinstance(data, dict):
+        return []
+
+    warnings: list[str] = []
+    run_id = data.get("run_id")
+    metadata_path = path.parent / "metadata.json"
+    metadata, metadata_errors = _load_json(metadata_path)
+    if metadata_errors:
+        warnings.extend(metadata_errors)
+    elif not isinstance(metadata, dict):
+        warnings.append(f"{metadata_path}: top-level value must be an object")
+    else:
+        for key in sorted(REQUIRED_METADATA_KEYS):
+            if key not in metadata:
+                warnings.append(f"{metadata_path}: missing required key {key}")
+        if isinstance(run_id, str) and metadata.get("run_id") != run_id:
+            warnings.append(
+                f"{metadata_path}: run_id {metadata.get('run_id')!r} does not match "
+                f"ledger run_id {run_id!r}"
+            )
+
+    results = data.get("results")
+    if not isinstance(results, list):
+        return warnings
+
+    seen_result_ids: set[str] = set()
+    for index, result in enumerate(results):
+        prefix = f"results[{index}]"
+        if not isinstance(result, dict):
+            continue
+
+        result_id = result.get("result_id")
+        if isinstance(result_id, str) and result_id:
+            if result_id in seen_result_ids:
+                warnings.append(f"{prefix}.result_id duplicates {result_id}")
+            else:
+                seen_result_ids.add(result_id)
+
+        p_value = result.get("p_value")
+        if p_value is not None and (
+            not isinstance(p_value, int | float) or not 0 <= float(p_value) <= 1
+        ):
+            warnings.append(f"{prefix}.p_value must be null or between 0 and 1")
+
+        interval = result.get("interval")
+        if isinstance(interval, dict):
+            lower = interval.get("lower")
+            upper = interval.get("upper")
+            if (
+                isinstance(lower, int | float)
+                and isinstance(upper, int | float)
+                and float(lower) > float(upper)
+            ):
+                warnings.append(f"{prefix}.interval lower must be <= upper")
+
+    return warnings
+
+
+def validate_ledger(path: Path, *, strict: bool = False) -> list[str]:
+    """Return validation errors for one `analysis.json` ledger."""
+
+    errors = _validate_ledger_schema(path)
+    if strict:
+        errors.extend(_validate_ledger_strict_checks(path))
+    return errors
+
+
+def validate_ledger_warnings(path: Path) -> list[str]:
+    """Return non-strict warnings for one `analysis.json` ledger."""
+
+    return _validate_ledger_strict_checks(path)
+
+
+def ledger_result_ids(repo_root: Path) -> tuple[set[str], set[str], dict[str, set[str]], list[str]]:
     """Collect unscoped and run-scoped result IDs from all ledgers."""
 
     result_ids: set[str] = set()
     scoped_result_ids: set[str] = set()
+    runs_by_result_id: dict[str, set[str]] = {}
     errors: list[str] = []
     for ledger in sorted((repo_root / "data" / "results").glob("*/analysis.json")):
         ledger_errors = validate_ledger(ledger)
@@ -193,7 +278,8 @@ def ledger_result_ids(repo_root: Path) -> tuple[set[str], set[str], list[str]]:
             result_id = str(result["result_id"])
             result_ids.add(result_id)
             scoped_result_ids.add(f"{run_id}:{result_id}")
-    return result_ids, scoped_result_ids, errors
+            runs_by_result_id.setdefault(result_id, set()).add(run_id)
+    return result_ids, scoped_result_ids, runs_by_result_id, errors
 
 
 def _is_exempt_paper_path(path: Path, repo_root: Path) -> bool:
@@ -221,14 +307,23 @@ def prose_files(repo_root: Path) -> list[Path]:
         for path in root.rglob("*.tex"):
             if path.is_file() and not _is_exempt_paper_path(path, repo_root):
                 files.append(path)
+    release_root = repo_root / "docs" / "release"
+    if release_root.exists():
+        for path in release_root.glob("*/*.md"):
+            if path.is_file():
+                files.append(path)
+        for path in release_root.rglob("datacard.md"):
+            if path.is_file():
+                files.append(path)
     return sorted(set(files))
 
 
 def trace_prose_result_ids(repo_root: Path) -> TraceabilityReport:
     """Find prose result references that are absent from structured ledgers."""
 
-    known, known_scoped, ledger_errors = ledger_result_ids(repo_root)
+    known, known_scoped, runs_by_result_id, ledger_errors = ledger_result_ids(repo_root)
     missing = list(ledger_errors)
+    warnings: list[str] = []
     referenced: set[str] = set()
     referenced_scoped: set[str] = set()
 
@@ -242,6 +337,11 @@ def trace_prose_result_ids(repo_root: Path) -> TraceabilityReport:
                 referenced.add(first)
                 if first not in known:
                     missing.append(f"{rel}: unknown result ID {first}")
+                elif len(runs_by_result_id.get(first, set())) > 1:
+                    runs = ", ".join(sorted(runs_by_result_id[first]))
+                    warnings.append(
+                        f"{rel}: ambiguous unscoped result ID {first}; present in runs {runs}"
+                    )
             else:
                 scoped = f"{first}:{second}"
                 referenced_scoped.add(scoped)
@@ -254,11 +354,16 @@ def trace_prose_result_ids(repo_root: Path) -> TraceabilityReport:
         referenced_result_ids=referenced,
         referenced_scoped_result_ids=referenced_scoped,
         missing=missing,
+        warnings=warnings,
     )
 
 
 def _cmd_validate_ledger(args: argparse.Namespace) -> int:
-    errors = validate_ledger(Path(args.path))
+    path = Path(args.path)
+    warnings = [] if args.strict else validate_ledger_warnings(path)
+    errors = validate_ledger(path, strict=args.strict)
+    for warning in warnings:
+        print(f"Warning: {warning}", file=sys.stderr)
     if errors:
         for error in errors:
             print(error, file=sys.stderr)
@@ -269,6 +374,8 @@ def _cmd_validate_ledger(args: argparse.Namespace) -> int:
 
 def _cmd_trace_prose(args: argparse.Namespace) -> int:
     report = trace_prose_result_ids(Path(args.repo_root).resolve())
+    for warning in report.warnings:
+        print(f"Warning: {warning}", file=sys.stderr)
     if report.missing:
         for error in report.missing:
             print(error, file=sys.stderr)
@@ -283,6 +390,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     validate = subcommands.add_parser("validate-ledger")
     validate.add_argument("path")
+    validate.add_argument("--strict", action="store_true")
     validate.set_defaults(func=_cmd_validate_ledger)
 
     trace = subcommands.add_parser("trace-prose")

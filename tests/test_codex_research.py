@@ -50,7 +50,7 @@ class FakeRunner:
         self.calls.append(cmd)
         if cmd[:3] == ["git", "rev-parse", "HEAD"]:
             return subprocess.CompletedProcess(cmd, 0, stdout="abc123\n", stderr="")
-        if cmd == ["codex", "--version"]:
+        if cmd[1:] == ["--version"]:
             return subprocess.CompletedProcess(cmd, 0, stdout="codex 1.2.3\n", stderr="")
         if self.raise_timeout:
             raise subprocess.TimeoutExpired(cmd, timeout or 0.0)
@@ -300,3 +300,198 @@ def test_redaction_removes_secret_values() -> None:
     )
     assert redacted["api_key"] == "[REDACTED]"
     assert "secret-value" not in redacted["message"]
+
+
+def write_claude_md(root: Path, zone_b_yaml: str) -> None:
+    root.joinpath("CLAUDE.md").write_text(
+        "<!-- ZONE_B_BEGIN -->\n"
+        "## Zone B - Project Configuration\n\n"
+        "```yaml\n"
+        f"{zone_b_yaml}"
+        "\n```\n"
+        "<!-- ZONE_B_END -->\n",
+        encoding="utf-8",
+    )
+
+
+def test_zone_b_scalar_codex_auto(tmp_path: Path) -> None:
+    runner = load_runner()
+    write_claude_md(
+        tmp_path,
+        "status: initialized\nexternal_cli:\n  codex: auto\n",
+    )
+    config = runner.load_zone_b_config(tmp_path)
+    assert config["command"] == "codex"
+    assert config["default_model"] is None
+    assert config["default_effort"] is None
+    assert config["profiles"] == runner.PROFILES
+
+
+def test_zone_b_object_config(tmp_path: Path) -> None:
+    runner = load_runner()
+    write_claude_md(
+        tmp_path,
+        "status: initialized\n"
+        "external_cli:\n"
+        "  codex:\n"
+        "    command: /opt/bin/codex\n"
+        "    default_model: gpt-test\n"
+        "    default_effort: low\n"
+        "    profiles:\n"
+        "      fast: minimal\n"
+        "      standard: medium\n"
+        "      deep: high\n",
+    )
+    config = runner.load_zone_b_config(tmp_path)
+    assert config["command"] == "/opt/bin/codex"
+    assert config["default_model"] == "gpt-test"
+    assert config["default_effort"] == "low"
+    assert config["profiles"]["fast"] == "minimal"
+    phase = runner.phase_config(
+        tmp_path,
+        "build",
+        "task-1",
+        prompt_file="-",
+        model=None,
+        effort=None,
+        profile="deep",
+        env={},
+        stdin_text="brief",
+        zone_b_config=config,
+    )
+    assert phase.command == runner.Selection("/opt/bin/codex", "zone_b_command")
+    assert phase.model == runner.Selection("gpt-test", "zone_b_default_model")
+    assert phase.effort == runner.Selection("high", "profile")
+    assert runner.build_codex_command(tmp_path, phase)[0] == "/opt/bin/codex"
+
+
+def test_zone_b_invalid_effort_graceful(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    runner = load_runner()
+    write_claude_md(
+        tmp_path,
+        "status: initialized\n"
+        "external_cli:\n"
+        "  codex:\n"
+        "    default_effort: turbo\n",
+    )
+    config = runner.load_zone_b_config(tmp_path)
+    assert config["default_effort"] is None
+    phase = runner.phase_config(
+        tmp_path,
+        "build",
+        "task-1",
+        prompt_file="-",
+        model=None,
+        effort=None,
+        env={},
+        stdin_text="brief",
+        zone_b_config=config,
+    )
+    assert phase.effort == runner.Selection("high", "phase_default")
+    err = capsys.readouterr().err
+    assert "default_effort" in err
+    assert "turbo" in err
+
+
+def test_zone_b_invalid_profile_effort_graceful(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    runner = load_runner()
+    write_claude_md(
+        tmp_path,
+        "status: initialized\n"
+        "external_cli:\n"
+        "  codex:\n"
+        "    profiles:\n"
+        "      fast: turbo\n",
+    )
+    config = runner.load_zone_b_config(tmp_path)
+    assert config["profiles"]["fast"] == runner.PROFILES["fast"]
+    phase = runner.phase_config(
+        tmp_path,
+        "build",
+        "task-1",
+        prompt_file="-",
+        model=None,
+        effort=None,
+        profile="fast",
+        env={},
+        stdin_text="brief",
+        zone_b_config=config,
+    )
+    assert phase.effort == runner.Selection("medium", "profile")
+    err = capsys.readouterr().err
+    assert "profiles" in err
+    assert "turbo" in err
+
+
+def test_zone_b_precedence_cli_over_zone_b(tmp_path: Path) -> None:
+    runner = load_runner()
+    config = {
+        "command": "zone-codex",
+        "default_model": "zone-model",
+        "default_effort": "low",
+        "profiles": runner.PROFILES,
+    }
+    phase = runner.phase_config(
+        tmp_path,
+        "review",
+        "task-1",
+        prompt_file="-",
+        model="cli-model",
+        effort="high",
+        env={},
+        stdin_text="brief",
+        zone_b_config=config,
+    )
+    assert phase.model == runner.Selection("cli-model", "cli")
+    assert phase.effort == runner.Selection("high", "cli")
+
+
+def test_zone_b_precedence_env_over_zone_b(tmp_path: Path) -> None:
+    runner = load_runner()
+    config = {
+        "command": "zone-codex",
+        "default_model": "zone-model",
+        "default_effort": "low",
+        "profiles": runner.PROFILES,
+    }
+    phase = runner.phase_config(
+        tmp_path,
+        "build",
+        "task-1",
+        prompt_file="-",
+        model=None,
+        effort=None,
+        env={
+            "CODEX_CLI": "env-codex",
+            "CODEX_BUILD_MODEL": "env-model",
+            "CODEX_BUILD_EFFORT": "medium",
+        },
+        stdin_text="brief",
+        zone_b_config=config,
+    )
+    assert phase.command == runner.Selection("env-codex", "CODEX_CLI")
+    assert phase.model == runner.Selection("env-model", "CODEX_BUILD_MODEL")
+    assert phase.effort == runner.Selection("medium", "CODEX_BUILD_EFFORT")
+
+
+def test_zone_b_missing_graceful(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    runner = load_runner()
+    config = runner.load_zone_b_config(tmp_path)
+    assert config["command"] == "codex"
+    assert "CLAUDE.md not found" in capsys.readouterr().err
+
+
+def test_zone_b_malformed_graceful(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    runner = load_runner()
+    write_claude_md(tmp_path, "external_cli: [bad\n")
+    config = runner.load_zone_b_config(tmp_path)
+    assert config["command"] == "codex"
+    assert "malformed Zone B" in capsys.readouterr().err
