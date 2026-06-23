@@ -24,5 +24,5 @@ Workflow:
 2. Ask for explicit approval before replacing a run, using credentials, acquiring non-public data, or performing destructive operations.
 3. Write `.claude/tasks/<task-id>/brief.md` with implementation scope and expected artifacts.
 4. Run `python scripts/codex_research.py build <task-id> --prompt-file .claude/tasks/<task-id>/brief.md`.
-5. On failure, use `/codex-debug` style workflow by running `python scripts/codex_research.py debug <task-id> --prompt-file .claude/tasks/<task-id>/brief.md`.
+5. On failure, run `python scripts/codex_research.py debug <task-id> --prompt-file .claude/tasks/<task-id>/brief.md`.
 6. Update Zone C with `current_phase: experiment`, `last_run_id`, and next action `/analyze-results`.

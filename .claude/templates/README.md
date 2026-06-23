@@ -10,8 +10,8 @@ support more than just Python.
 .claude/templates/
   README.md           This file.
   python/             Recipes for Python projects (uv-managed, default).
-    repro.py          → src/utils/repro.py   (reproducibility metadata helper)
-    viz.py            → src/utils/viz.py     (matplotlib publication / presentation styling)
+    repro.py          → src/utils/repro.py   (reproducibility metadata helper — always copied)
+    viz.py            → src/utils/viz.py     (matplotlib publication / presentation styling — optional, copied only if user opts in)
   r/                  (not yet shipped — placeholder)
     repro.R           → R/utils/repro.R
     viz.R             → R/utils/viz.R
@@ -31,7 +31,7 @@ support more than just Python.
 
 - **Adapt to user preference, do not impose taste.** Where the template ships defaults, structure them so the user can express preferences declaratively (named profiles in `STYLE_PROFILES`, a Zone B field in `CLAUDE.md`) rather than having to monkey-patch generated code.
 - **Three-layer structure**: (1) infrastructure that the rendered figure cannot reveal — e.g. `pdf.fonttype = 42` so vector text remains editable; (2) named profiles as starting points; (3) per-call kwarg overrides. Each layer is overridable from the layer above.
-- **Reviewer-aware enforcement.** The orchestrator critiques rendered figures via `viz-reviewer` (Gemini-backed). Things the reviewer can catch on the rendered output (font choice, colors, spine policy, composition) are treated as preference, not enforcement. Things the reviewer cannot catch (PDF text editability, multi-format save, untitled figures) are enforced.
+- **Reviewer-aware enforcement.** The orchestrator critiques rendered figures via review agents (`scientific-author` for visual review, Codex reviewer for data-mapping review). Things the reviewer can catch on the rendered output (font choice, colors, spine policy, composition) are treated as preference, not enforcement. Things the reviewer cannot catch (PDF text editability, multi-format save, untitled figures) are enforced.
 - **Frameworks-of-the-language, not third-party stacks.** Python recipes use stdlib + matplotlib + numpy because those are in `pyproject.toml`. Avoid pulling in opinionated third-party stacks (Plotly, Polars, etc.) that the user may not want.
 - **Generic fallback chains.** Don't pin OS-specific resources. Example: font families use `["DejaVu Serif", "Liberation Serif", ..., "serif"]` rather than hardcoding `Times New Roman` first.
 - **Discipline checks, not aesthetic prescriptions.** Where the template raises an error, it should be a research-rigor concern (e.g. "figure has no title and no caption argument" → raise) rather than a style opinion.

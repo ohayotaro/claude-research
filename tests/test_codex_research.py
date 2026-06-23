@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -106,6 +107,51 @@ def test_omits_model_when_unset_and_uses_effort_precedence(tmp_path: Path) -> No
     assert config.effort.source == "CODEX_REVIEW_EFFORT"
 
 
+def test_profile_resolves_effort() -> None:
+    runner = load_runner()
+    assert runner.select_effort("build", None, {}, profile="fast") == runner.Selection(
+        "medium", "profile"
+    )
+    assert runner.select_effort("review", None, {}, profile="deep") == runner.Selection(
+        "xhigh", "profile"
+    )
+
+
+def test_profile_resolves_model_from_env() -> None:
+    runner = load_runner()
+    assert runner.select_model(
+        "build", None, {"CODEX_STANDARD_MODEL": "o3"}, profile="standard"
+    ) == runner.Selection("o3", "CODEX_STANDARD_MODEL")
+
+
+def test_profile_model_falls_through_to_phase_env() -> None:
+    runner = load_runner()
+    assert runner.select_model(
+        "build", None, {"CODEX_BUILD_MODEL": "o3"}, profile="standard"
+    ) == runner.Selection("o3", "CODEX_BUILD_MODEL")
+
+
+def test_explicit_model_overrides_profile() -> None:
+    runner = load_runner()
+    assert runner.select_model(
+        "build", "custom-model", {"CODEX_FAST_MODEL": "o3"}, profile="fast"
+    ) == runner.Selection("custom-model", "cli")
+
+
+def test_profile_and_effort_mutually_exclusive(capsys: pytest.CaptureFixture[str]) -> None:
+    runner = load_runner()
+    assert runner.main(["build", "task-1", "--profile", "fast", "--effort", "high"]) == 1
+    assert "cannot combine --profile with --effort" in capsys.readouterr().err
+
+
+def test_invalid_profile_rejected(capsys: pytest.CaptureFixture[str]) -> None:
+    runner = load_runner()
+    with pytest.raises(SystemExit) as exc:
+        runner.main(["build", "task-1", "--profile", "invalid"])
+    assert exc.value.code == 2
+    assert "invalid choice" in capsys.readouterr().err
+
+
 def test_invalid_effort_and_task_id_are_rejected(tmp_path: Path) -> None:
     runner = load_runner()
     with pytest.raises(ValueError, match="unsupported Codex effort"):
@@ -145,6 +191,51 @@ def test_run_phase_state_transitions_success(tmp_path: Path) -> None:
     assert '"status": "succeeded"' in state
     assert '"sandbox": "read-only"' in state
     assert (tmp_path / ".claude" / "tasks" / "task-1" / "brief.md").exists()
+
+
+def test_state_json_records_profile(tmp_path: Path) -> None:
+    runner = load_runner()
+    fake = FakeRunner()
+    config = runner.phase_config(
+        tmp_path,
+        "build",
+        "task-1",
+        prompt_file="-",
+        model=None,
+        effort=None,
+        profile="fast",
+        env={},
+        stdin_text="brief",
+    )
+    assert runner.run_phase(tmp_path, "task-1", config, timeout=10, runner=fake) == 0
+    state = json.loads(
+        (tmp_path / ".claude" / "tasks" / "task-1" / "state.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert state["requested_profile"] == "fast"
+
+
+def test_reviewer_effort_warning(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    runner = load_runner()
+    directory = tmp_path / ".claude" / "tasks" / "task-1"
+    directory.mkdir(parents=True)
+    events = [
+        {"event": "phase_started", "phase": "build", "effort": "high"},
+        {"event": "phase_finished", "phase": "build", "status": "succeeded"},
+    ]
+    (directory / "events.jsonl").write_text(
+        "\n".join(json.dumps(event, sort_keys=True) for event in events) + "\n",
+        encoding="utf-8",
+    )
+
+    runner.warn_if_review_below_build(directory, "medium")
+    assert "review effort (medium) is lower than build effort (high)" in capsys.readouterr().err
+
+    runner.warn_if_review_below_build(directory, "high")
+    assert capsys.readouterr().err == ""
 
 
 @pytest.mark.parametrize(

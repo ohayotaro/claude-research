@@ -25,7 +25,7 @@ Examples that **do not** require a citation:
 - Prefer `@article` / `@inproceedings` / `@book` / `@misc` (for arXiv preprints, with `archivePrefix = {arXiv}`).
 - Always include: `author`, `title`, `year`. Include `journal` / `booktitle`, `volume`, `pages`, `doi` when available.
 - Use double-braced titles to preserve casing: `title = {{BERT}: Pre-training of Deep Bidirectional Transformers}`.
-- Sort by cite key. The `literature-reviewer` agent maintains sort order.
+- Sort by cite key. The `scientific-author` agent maintains sort order.
 
 ## Secondary citations are forbidden
 

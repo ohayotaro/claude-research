@@ -20,7 +20,8 @@ Output:
 - `docs/paper/<paper_id>/draft.md` or `docs/paper/<paper_id>/main.tex`
 
 Workflow:
-1. Resolve `paper_id` explicitly; never assume from `last_paper_id` without confirmation.
+1. Resolve `paper_id` per multi-paper.md §4 (confirm even with a single registry entry). If an unknown `paper_id` is passed, enter the `/add-paper` flow to register it before writing.
 2. Preserve claim-evidence alignment and result-ID citations.
 3. Do not add unsupported novelty, priority, causal, or numerical claims.
 4. Run prose traceability checks before handoff.
+5. Update Zone C with `current_phase: writing`, `last_paper_id`, and next action.

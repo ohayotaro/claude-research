@@ -43,6 +43,32 @@ Routing is artifact and phase based. Do not use keyword routing or implicit fall
 All Codex invocations must go through `scripts/codex_research.py`. Skills and agents must not
 embed independent `codex exec` command templates.
 
+### Permission boundaries
+
+Routing conventions for which role may write which paths. Most specific path wins.
+Codex sandbox modes enforce builder/reviewer columns at runtime. Scientific author
+tool restrictions are enforced in the agent definition. Research Lead restrictions
+are routing conventions.
+
+| Path pattern | Codex builder | Codex reviewer | Scientific author | Research Lead |
+|---|---|---|---|---|
+| `src/**` | write | read-only | read | read |
+| `tests/**` | write | read-only | read | read |
+| `scripts/**` | write | read-only | read | read |
+| `data/raw/**` | append-only | read-only | read | read |
+| `data/processed/**` | write | read-only | read | read |
+| `data/results/**` | write | read-only | read | read |
+| `notebooks/**` | write | read-only | read | read |
+| `docs/research/**` | read | read-only | write | read |
+| `docs/paper/<paper_id>/draft.md`, `main.tex`, `review-*.md`, `rebuttal.md` | read | read-only | write | read |
+| `docs/paper/<paper_id>/changelog.md` | read | read-only | write | read |
+| `docs/paper/<paper_id>/submissions/**` | write | read-only | read | read |
+| `docs/release/**` | write | read-only | write (data cards, citation prose) | read |
+| `docs/references.bib` | read | read-only | write | read |
+| `.claude/tasks/**` | via runner | via runner | - | write |
+| `CLAUDE.md` Zone B/C | - | - | - | write |
+| `.claude/agents/**`, `.claude/skills/**`, `.claude/rules/**`, `.claude/hooks/**` | - | - | - | - (template-managed) |
+
 ### Human Approval Gates
 
 Require explicit user approval before:

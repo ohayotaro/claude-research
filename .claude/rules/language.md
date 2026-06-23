@@ -9,7 +9,7 @@ There is exactly one Japanese-language surface in this repository: **the chat be
 - `/init-research` interactive Q&A.
 - Hook user-facing warning / status strings (e.g. citation-guard's "引用が見つかりません" message).
 - Skill execution status output shown to the user.
-- `session-start.py` / `session-end.py` screen output.
+- `session-start.py` screen output.
 
 ## English (everything else)
 

@@ -172,6 +172,9 @@ for path in \
     .claude/hooks/agent-router.py \
     .claude/hooks/research-keyword-detector.py \
     .claude/hooks/log-cli-tools.py \
+    .claude/hooks/session-end.py \
+    .claude/skills/review-figures \
+    .claude/skills/review-script \
     .claude/rules/agent-routing.md
 do
     if [[ -e "$path" ]]; then

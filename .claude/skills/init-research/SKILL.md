@@ -13,6 +13,7 @@ Ask the user in Japanese for:
 - paper language, paper format, target venue, and initial paper title when known
 - runtime language and Python version
 - data sensitivity, IRB/ethics needs, and default figure style
+- whether to include the visualization helper (`viz.py`) — explain it provides colorblind-safe palettes, multi-format save, and publication/presentation style profiles for matplotlib; skip if the project does not use matplotlib
 
 Write Zone B with:
 - `status: initialized`
@@ -24,7 +25,8 @@ Scaffold only missing files:
 - `docs/references.bib`
 - `docs/paper/main/draft.md` or `docs/paper/main/main.tex`
 - `src/{experiments,analysis,utils}/__init__.py`
-- starter utility copies from `.claude/templates/<language>/`, falling back to Python templates
+- `repro.py` from `.claude/templates/<language>/`, falling back to Python templates
+- `viz.py` from `.claude/templates/<language>/` only if the user opted in
 - `data/{raw,processed,results}/.gitkeep`
 - `notebooks/.gitkeep`
 - `tests/test_smoke.py`

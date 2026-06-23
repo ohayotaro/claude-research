@@ -2,7 +2,7 @@
 
 A single research repository may produce multiple papers (main paper + workshop spin-off, journal extension, methods short paper). This file is the **single source of truth** for how papers are identified, where their files live, and how skills/agents/hooks resolve a paper from a user prompt.
 
-Every paper-touching skill (`write-paper`, `peer-review`, `revise`, `prepare-submission`, `release-artifacts`, `add-paper`, `init-research`, `checkpoint`) and every paper-touching agent (`paper-writer`, `peer-reviewer`) MUST follow this rule. Hooks (`citation-guard`) consume the path contract defined here.
+Every paper-touching skill (`write-paper`, `peer-review`, `revise`, `prepare-submission`, `release-artifacts`, `add-paper`, `init-research`, `checkpoint`) and every paper-touching agent (`scientific-author` in manuscript-drafting mode, Codex reviewer) MUST follow this rule. Hooks (`citation-guard`) consume the path contract defined here.
 
 `docs/research/` is unchanged: it is the shared experimental substrate across all papers in the same repo.
 
@@ -21,7 +21,7 @@ A paper is identified by a `paper_id` string. Rules:
 
 These slugs MUST be rejected as `paper_id`, regardless of regex validity:
 
-- Structural directory names that already appear under `docs/paper/` or that may appear as `paper-writer` scaffolds: `submissions`, `figures`, `_template`, `template`, `assets`.
+- Structural directory names that already appear under `docs/paper/` or that may appear as skill scaffolds: `submissions`, `figures`, `_template`, `template`, `assets`.
 - Reserved literals: `main` is **allowed and is the conventional default**, but `release`, `releases`, `latest`, `current` are reserved.
 - Path traversal / filesystem ambiguity: `.`, `..`, `con`, `prn`, `aux`, `nul`, `com1`–`com9`, `lpt1`–`lpt9` (Windows reserved device names).
 - Reserved suffix: any slug ending in `-r<digits>` (would collide with submission round suffixes inside the bundle path).
@@ -133,7 +133,7 @@ If path inference fails (legacy flat layout, ambiguous nesting), the hook MUST l
 
 ## 5. Lazy migration
 
-Legacy single-paper repos have `docs/paper/draft.md` (or `main.tex`) at the flat top level. Migration to the per-paper layout is **lazy**: it happens the first time a paper-touching skill is invoked, OR the first time `paper-writer` / `peer-reviewer` agent is delegated to. Hooks never trigger migration.
+Legacy single-paper repos have `docs/paper/draft.md` (or `main.tex`) at the flat top level. Migration to the per-paper layout is **lazy**: it happens the first time a paper-touching skill is invoked. Hooks never trigger migration.
 
 ### 5.1 Filesystem state matrix
 
@@ -187,8 +187,8 @@ The hook implements this via path-segment inspection (after `docs/paper/`, the s
 
 If two papers in the same repo have different `paper_format` (one Markdown, one LaTeX), every runtime path must branch on the **resolved per-paper format**, never the root. Specifically:
 
-- `paper-writer` reads `papers[id == <paper_id>].paper_format` and chooses `draft.md` vs `main.tex` accordingly.
-- `peer-reviewer` reads the same to know which file to load.
+- `scientific-author` (manuscript-drafting mode) reads `papers[id == <paper_id>].paper_format` and chooses `draft.md` vs `main.tex` accordingly.
+- Codex reviewer reads the same to know which file to load.
 - `prepare-submission` bundles the correct file extension.
 - `release-artifacts` includes only the paper directories listed in the release manifest, using each one's resolved format.
 

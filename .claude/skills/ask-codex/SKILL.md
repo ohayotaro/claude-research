@@ -13,3 +13,7 @@ Rules:
 - The brief must include exact artifacts and the question being reviewed.
 - The answer is advisory until the Research Lead accepts or assigns follow-up work.
 - Do not use this skill for code implementation; use `/run-experiment`, `/analyze-results`, or a dedicated Codex builder task.
+
+Common review rubrics (include relevant items in the brief):
+- **Script review**: statistical correctness, leakage, confounding, assumptions, missing data, multiplicity, reproducibility metadata, deterministic seeds, test coverage, fixture realism, ownership boundaries, and result-ledger compatibility.
+- **General**: logic, edge cases, performance, and security.

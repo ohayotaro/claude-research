@@ -82,7 +82,7 @@ state JSON, and sanitized event logs. It is gitignored.
 
 ```text
 /init-research -> /literature-review -> /identify-gaps -> /generate-hypothesis
--> /design-experiment -> /run-experiment -> /analyze-results -> /review-figures
+-> /design-experiment -> /run-experiment -> /analyze-results
 -> /discuss-results -> /write-paper -> /peer-review -> /revise
 -> /prepare-submission -> /release-artifacts
 ```
@@ -93,14 +93,12 @@ Common operational skills:
 /lint
 /checkpoint
 /ask-codex
-/review-script
 /paper-deep-read
 /extend-literature
 ```
 
-Literature search, PDF reading, and static figure review are Claude-native author workflows.
-Static figure review may inspect rendered figures for readability and composition; Codex
-reviews data mapping, axes, intervals, and provenance from code and ledgers.
+Literature search and PDF reading are Claude-native author workflows. Figure review
+(readability, data mapping, axes, intervals, provenance) is integrated into `/analyze-results`.
 
 ## Codex Runner
 

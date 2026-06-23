@@ -21,6 +21,7 @@ KV_RE = re.compile(r"^\s*([a-zA-Z_][\w]*)\s*:\s*(.+?)\s*$", re.MULTILINE)
 
 
 def parse_kv(block: str) -> dict[str, str]:
+    """Parse only top-level (zero-indent) YAML keys inside code fences."""
     out: dict[str, str] = {}
     in_yaml = False
     for line in block.splitlines():
@@ -28,6 +29,8 @@ def parse_kv(block: str) -> dict[str, str]:
             in_yaml = not in_yaml
             continue
         if not in_yaml:
+            continue
+        if line and line[0] in (" ", "\t", "-"):
             continue
         m = KV_RE.match(line)
         if m:

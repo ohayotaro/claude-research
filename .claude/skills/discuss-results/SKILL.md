@@ -23,3 +23,4 @@ Workflow:
 1. Discuss what the results support, do not support, and leave unresolved.
 2. Include negative, null, failed, and inconclusive findings.
 3. Ground literature comparisons in cite keys and numerical claims in result IDs.
+4. Update Zone C with `current_phase: discussion` and next action.

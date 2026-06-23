@@ -39,7 +39,18 @@ PHASE_DEFAULT_EFFORT = {
     "review": "high",
     "debug": "medium",
 }
+PROFILES: dict[str, str] = {
+    "fast": "medium",
+    "standard": "high",
+    "deep": "xhigh",
+}
+PROFILE_MODEL_ENV: dict[str, str] = {
+    "fast": "CODEX_FAST_MODEL",
+    "standard": "CODEX_STANDARD_MODEL",
+    "deep": "CODEX_DEEP_MODEL",
+}
 ALLOWED_EFFORTS = {"minimal", "low", "medium", "high", "xhigh"}
+EFFORT_ORDER = {"minimal": 0, "low": 1, "medium": 2, "high": 3, "xhigh": 4}
 TASK_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$")
 SECRET_KEY_RE = re.compile(r"(token|secret|password|credential|api[_-]?key)", re.IGNORECASE)
 SECRET_VALUE_RE = re.compile(
@@ -77,6 +88,7 @@ class PhaseConfig:
     effort: Selection
     output_path: Path
     prompt_text: str
+    profile: str | None = None
 
 
 def utc_now() -> str:
@@ -169,10 +181,19 @@ def codex_version(repo_root: Path, runner: CommandRunner = subprocess) -> str:
     return proc.stdout.strip() or "unavailable"
 
 
-def select_model(phase: str, explicit: str | None, env: dict[str, str]) -> Selection:
+def select_model(
+    phase: str,
+    explicit: str | None,
+    env: dict[str, str],
+    profile: str | None = None,
+) -> Selection:
     phase_model_env, _ = PHASE_EFFORT_ENV[phase]
     if explicit:
         return Selection(explicit, "cli")
+    if profile:
+        profile_model_env = PROFILE_MODEL_ENV[profile]
+        if env.get(profile_model_env):
+            return Selection(env[profile_model_env], profile_model_env)
     if env.get(phase_model_env):
         return Selection(env[phase_model_env], phase_model_env)
     if env.get("CODEX_MODEL"):
@@ -180,9 +201,17 @@ def select_model(phase: str, explicit: str | None, env: dict[str, str]) -> Selec
     return Selection(None, "user_default")
 
 
-def select_effort(phase: str, explicit: str | None, env: dict[str, str]) -> Selection:
+def select_effort(
+    phase: str,
+    explicit: str | None,
+    env: dict[str, str],
+    profile: str | None = None,
+) -> Selection:
     _, phase_effort_env = PHASE_EFFORT_ENV[phase]
-    if explicit:
+    if profile:
+        source = "profile"
+        value = PROFILES[profile]
+    elif explicit:
         source = "cli"
         value = explicit
     elif env.get(phase_effort_env):
@@ -221,6 +250,7 @@ def phase_config(
     prompt_file: str | None,
     model: str | None,
     effort: str | None,
+    profile: str | None = None,
     env: dict[str, str],
     stdin_text: str | None = None,
 ) -> PhaseConfig:
@@ -231,8 +261,9 @@ def phase_config(
     return PhaseConfig(
         phase=phase,
         sandbox=PHASE_SANDBOX[phase],
-        model=select_model(phase, model, env),
-        effort=select_effort(phase, effort, env),
+        model=select_model(phase, model, env, profile),
+        effort=select_effort(phase, effort, env, profile),
+        profile=profile,
         output_path=directory / PHASE_OUTPUT[phase],
         prompt_text=prompt_text,
     )
@@ -256,7 +287,7 @@ def build_codex_command(repo_root: Path, config: PhaseConfig) -> list[str]:
     if config.model.value:
         cmd.extend(["--model", config.model.value])
     if config.effort.value:
-        cmd.extend(["--config", f'model_reasoning_effort="{config.effort.value}"'])
+        cmd.extend(["--config", f"model_reasoning_effort={config.effort.value}"])
     cmd.append("-")
     return cmd
 
@@ -287,6 +318,7 @@ def write_state(
     effort: Selection,
     git_head_before: str,
     git_head_after: str | None,
+    requested_profile: str | None = None,
     error: str | None = None,
 ) -> None:
     if status not in STATE_VALUES:
@@ -301,6 +333,7 @@ def write_state(
         "exit_code": exit_code,
         "codex_cli_version": codex_version_value,
         "sandbox": sandbox,
+        "requested_profile": requested_profile,
         "requested_model": model.value,
         "model_selection_source": model.source,
         "requested_effort": effort.value,
@@ -329,6 +362,42 @@ def _parse_jsonl(stdout: str, events_path: Path) -> list[str]:
         else:
             errors.append(f"JSONL line {line_no} is not an object")
     return errors
+
+
+def _latest_successful_build_effort(events_path: Path) -> str | None:
+    if not events_path.exists():
+        return None
+
+    latest_started_effort: str | None = None
+    latest_succeeded_effort: str | None = None
+    for line in events_path.read_text(encoding="utf-8").splitlines():
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(event, dict) or event.get("phase") != "build":
+            continue
+        if event.get("event") == "phase_started":
+            effort = event.get("effort")
+            latest_started_effort = effort if isinstance(effort, str) else None
+        elif event.get("event") == "phase_finished" and event.get("status") == "succeeded":
+            latest_succeeded_effort = latest_started_effort
+    return latest_succeeded_effort
+
+
+def warn_if_review_below_build(directory: Path, review_effort: str) -> None:
+    build_effort = _latest_successful_build_effort(directory / "events.jsonl")
+    if build_effort is None:
+        return
+    if build_effort not in EFFORT_ORDER or review_effort not in EFFORT_ORDER:
+        return
+    if EFFORT_ORDER[review_effort] < EFFORT_ORDER[build_effort]:
+        print(
+            "[profile-routing] Warning: review effort "
+            f"({review_effort}) is lower than build effort ({build_effort}) "
+            f"for task {directory.name}. Consider using --profile standard or higher.",
+            file=sys.stderr,
+        )
 
 
 def run_phase(
@@ -366,6 +435,7 @@ def run_phase(
         effort=config.effort,
         git_head_before=git_before,
         git_head_after=None,
+        requested_profile=config.profile,
     )
     append_event(
         events_path,
@@ -375,9 +445,12 @@ def run_phase(
             "phase": config.phase,
             "sandbox": config.sandbox,
             "model_source": config.model.source,
+            "effort": config.effort.value,
             "effort_source": config.effort.source,
         },
     )
+    if config.phase == "review" and config.effort.value is not None:
+        warn_if_review_below_build(directory, config.effort.value)
 
     cmd = build_codex_command(repo_root, config)
     try:
@@ -430,6 +503,7 @@ def run_phase(
         effort=config.effort,
         git_head_before=git_before,
         git_head_after=git_after,
+        requested_profile=config.profile,
         error=error,
     )
     append_event(
@@ -483,6 +557,14 @@ def collect_task(repo_root: Path, task_id: str) -> int:
 
 def _phase_command(args: argparse.Namespace) -> int:
     repo_root = repo_root_from(Path.cwd())
+    profile = getattr(args, "profile", None)
+    if profile and args.effort:
+        print(
+            "error: cannot combine --profile with --effort; "
+            "profile sets effort automatically",
+            file=sys.stderr,
+        )
+        return 1
     try:
         config = phase_config(
             repo_root,
@@ -491,6 +573,7 @@ def _phase_command(args: argparse.Namespace) -> int:
             prompt_file=args.prompt_file,
             model=args.model,
             effort=args.effort,
+            profile=profile,
             env=dict(os.environ),
         )
     except ValueError as exc:
@@ -523,6 +606,8 @@ def build_parser() -> argparse.ArgumentParser:
         phase_parser.add_argument("--prompt-file", default="-")
         phase_parser.add_argument("--model")
         phase_parser.add_argument("--effort")
+        if phase in {"build", "review", "debug"}:
+            phase_parser.add_argument("--profile", choices=sorted(PROFILES))
         phase_parser.add_argument("--timeout", type=int)
 
     status = subcommands.add_parser("status")

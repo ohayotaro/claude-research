@@ -6,9 +6,9 @@ ends up with a valid metadata.json containing all required fields. If the run
 is "finished" (i.e. files exist but metadata is missing or incomplete),
 emit a strong warning to the user.
 
-This is a guardrail; the experiment-runner agent should write metadata.json
-*first*, but operators may write outputs by hand. We complain loudly when that
-breaks the reproducibility contract.
+This is a guardrail; the Codex builder should write metadata.json *first*,
+but operators may write outputs by hand. We complain loudly when that breaks
+the reproducibility contract.
 """
 
 from __future__ import annotations
@@ -81,7 +81,7 @@ def main() -> int:
     if not md_path.exists():
         print(
             f"[reproducibility-check] {run_dir}/ に出力ファイルがあるにもかかわらず "
-            "metadata.json が存在しません。experiment-runner は metadata.json を"
+            "metadata.json が存在しません。Codex builder は metadata.json を"
             f"最初に書く契約です。`{run_dir}` を一度クリアし、"
             "src/utils/repro.py の write_metadata を経由して再実行してください。"
         )

@@ -25,7 +25,7 @@ skill calls you with an explicit mode, inputs, output paths, and acceptance crit
 - `manuscript-drafting`
 - `revision-and-rebuttal`
 - `submission-prose`
-- `static-figure-review`
+- `static-figure-review` (invoked as part of `/analyze-results` when figures are present)
 
 ## Ownership
 
@@ -34,6 +34,9 @@ You may write:
 - `docs/research/**`
 - `docs/paper/**`
 - `docs/references.bib`
+
+Exception: `docs/paper/**/submissions/**` is builder-owned. You may read it, but must
+not write submission package artifacts.
 
 You may read relevant source code, result artifacts, figures, task artifacts, and review
 artifacts. You must not write `src/**`, `tests/**`, `data/**`, orchestration scripts, or

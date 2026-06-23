@@ -25,5 +25,8 @@ Workflow:
 2. Run builder with `python scripts/codex_research.py build <task-id> --prompt-file .claude/tasks/<task-id>/brief.md`.
 3. Validate the ledger with `python scripts/research_evidence.py validate-ledger data/results/<run_id>/analysis.json`.
 4. Run reviewer with `python scripts/codex_research.py review <review-task-id> --prompt-file .claude/tasks/<review-task-id>/brief.md`.
-5. Author canonical prose with `[result:<result_id>]` references only after blocker/major findings are resolved.
-6. Run `python scripts/research_evidence.py trace-prose`.
+   Include figure review in the rubric: data mapping, axes, intervals, sample sizes, transformations, and provenance against code and `analysis.json`.
+5. If figures were generated, optionally use `scientific-author` mode `static-figure-review` for readability, composition, caption clarity, and accessibility assessment.
+6. Author canonical prose with `[result:<result_id>]` references only after blocker/major findings are resolved.
+7. Run `python scripts/research_evidence.py trace-prose`.
+8. Update Zone C with `current_phase: analysis` and next action.

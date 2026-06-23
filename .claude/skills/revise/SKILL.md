@@ -22,7 +22,9 @@ Outputs:
 - `docs/paper/<paper_id>/changelog.md`
 
 Workflow:
-1. Address blocker/major findings first.
-2. Record substantive changes in the changelog.
-3. Do not weaken limitations or reframe exploratory findings as confirmatory.
-4. Re-run citation and result-ID traceability checks.
+1. Resolve `paper_id` per multi-paper.md §4 (confirm even with a single registry entry).
+2. Address blocker/major findings first.
+3. Record substantive changes in the changelog.
+4. Do not weaken limitations or reframe exploratory findings as confirmatory.
+5. Re-run citation and result-ID traceability checks.
+6. Update Zone C with `current_phase: revision` and next action.

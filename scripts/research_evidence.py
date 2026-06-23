@@ -196,6 +196,18 @@ def ledger_result_ids(repo_root: Path) -> tuple[set[str], set[str], list[str]]:
     return result_ids, scoped_result_ids, errors
 
 
+def _is_exempt_paper_path(path: Path, repo_root: Path) -> bool:
+    """Exclude submission bundles and changelog from citation/result scanning."""
+    try:
+        rel = path.relative_to(repo_root / "docs" / "paper")
+    except ValueError:
+        return False
+    rel_parts = rel.parts
+    if "submissions" in rel_parts:
+        return True
+    return bool(rel_parts and rel_parts[-1] == "changelog.md")
+
+
 def prose_files(repo_root: Path) -> list[Path]:
     """Return canonical prose files that may cite result IDs."""
 
@@ -203,8 +215,12 @@ def prose_files(repo_root: Path) -> list[Path]:
     for root in [repo_root / "docs" / "research", repo_root / "docs" / "paper"]:
         if not root.exists():
             continue
-        files.extend(path for path in root.rglob("*.md") if path.is_file())
-        files.extend(path for path in root.rglob("*.tex") if path.is_file())
+        for path in root.rglob("*.md"):
+            if path.is_file() and not _is_exempt_paper_path(path, repo_root):
+                files.append(path)
+        for path in root.rglob("*.tex"):
+            if path.is_file() and not _is_exempt_paper_path(path, repo_root):
+                files.append(path)
     return sorted(set(files))
 
 

@@ -6,7 +6,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def active_files() -> list[Path]:
-    ignored_parts = {".git", ".venv", "logs", "__pycache__"}
+    ignored_parts = {".git", ".venv", "logs", "tasks", "__pycache__"}
     files: list[Path] = []
     for path in ROOT.rglob("*"):
         if not path.is_file():
@@ -74,7 +74,6 @@ def test_author_skills_use_explicit_agent_fork() -> None:
         "discuss-results",
         "write-paper",
         "revise",
-        "review-figures",
     }
     for name in expected:
         text = (ROOT / ".claude" / "skills" / name / "SKILL.md").read_text(
