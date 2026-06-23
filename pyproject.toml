@@ -28,7 +28,7 @@ dev = [
 # src/{experiments,analysis,utils}/ and is imported via PYTHONPATH=src
 # (configured for tests via [tool.pytest.ini_options].pythonpath below).
 # Experiment scripts add src/ to sys.path themselves with a 3-line bootstrap
-# documented in .claude/agents/experiment-runner.md.
+# (see .claude/templates/python/repro.py for the pattern).
 [tool.uv]
 package = false
 

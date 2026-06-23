@@ -4,7 +4,7 @@ These rules are non-negotiable. Any agent or skill that violates them is wrong, 
 
 ## Hard prohibitions
 
-- **No fabrication.** Do not invent data points, results, citations, or quotes. If a number is computed, it must come from a script in `src/` whose run is recorded in `data/results/<run_id>/`.
+- **No fabrication.** Do not invent data points, results, citations, or quotes. If a number is computed, it must come from a script in `src/` whose run is recorded in `data/results/<run_id>/` and, for completed analyses, in `analysis.json`.
 - **No falsification.** Do not modify recorded results to make them look better. If you find a bug in analysis code, write a new run with a new `run_id` and explain the difference in `docs/research/analysis.md`.
 - **No plagiarism.** Every claim that is not your own contribution must carry a citation `[@citekey]` resolvable in `docs/references.bib` (applies to `docs/research/**/*.md` and per-paper drafts under `docs/paper/<paper_id>/`). Paraphrase; do not copy more than a short technical phrase.
 - **No selective reporting.** If you ran 5 experiments and 1 supports the hypothesis, you must report all 5. Cherry-picking is fabrication by omission.
@@ -14,6 +14,7 @@ These rules are non-negotiable. Any agent or skill that violates them is wrong, 
 
 - Negative, null, and inconclusive results are first-class. Report them in `docs/research/analysis.md` and in each affected paper's `docs/paper/<paper_id>/draft.md` (or `main.tex`). Do not bury them in supplementary material unless the user explicitly asks.
 - A failed experiment is data. Do not delete its `run_id` directory.
+- When transferring numerical claims into canonical prose, cite the structured ledger result as `[result:<result_id>]` or `[result:<run_id>:<result_id>]`.
 
 ## Data handling
 

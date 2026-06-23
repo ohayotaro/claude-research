@@ -15,7 +15,7 @@ import platform
 import random
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -43,8 +43,22 @@ def _package_versions(packages: list[str]) -> dict[str, str]:
     return out
 
 
+def _detect_gpu() -> str | None:
+    """Best-effort GPU detection via nvidia-smi. Returns None if unavailable."""
+    try:
+        out = subprocess.check_output(
+            ["nvidia-smi", "--query-gpu=name,driver_version", "--format=csv,noheader"],
+            text=True,
+            timeout=5,
+            stderr=subprocess.DEVNULL,
+        )
+        return out.strip() or None
+    except Exception:
+        return None
+
+
 def make_run_id(args: dict[str, Any]) -> str:
-    ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%S")
+    ts = datetime.now(UTC).strftime("%Y-%m-%dT%H-%M-%S")
     h = hashlib.sha1(json.dumps(args, sort_keys=True, default=str).encode()).hexdigest()[:8]
     return f"{ts}_{h}"
 
@@ -72,6 +86,10 @@ def write_metadata(
     tracked_packages: list[str] | None = None,
 ) -> Path:
     rev, clean = _git_rev()
+    hardware: dict[str, Any] = {"cpu_count": os.cpu_count()}
+    gpu = _detect_gpu()
+    if gpu is not None:
+        hardware["gpu"] = gpu
     md = {
         "run_id": run_dir.name,
         "started_at": started_at,
@@ -86,9 +104,7 @@ def write_metadata(
         "package_versions": _package_versions(
             tracked_packages or ["numpy", "scipy", "pandas", "matplotlib", "statsmodels"]
         ),
-        "hardware": {
-            "cpu_count": os.cpu_count(),
-        },
+        "hardware": hardware,
     }
     if extra:
         md.update(extra)

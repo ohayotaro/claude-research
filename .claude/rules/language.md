@@ -9,7 +9,7 @@ There is exactly one Japanese-language surface in this repository: **the chat be
 - `/init-research` interactive Q&A.
 - Hook user-facing warning / status strings (e.g. citation-guard's "引用が見つかりません" message).
 - Skill execution status output shown to the user.
-- `session-start.py` / `session-end.py` screen output.
+- `session-start.py` screen output.
 
 ## English (everything else)
 
@@ -22,10 +22,9 @@ There is exactly one Japanese-language surface in this repository: **the chat be
 - All `docs/research/*.md` (lit-review, gaps, hypotheses, methodology, analysis, discussion).
 - All `docs/paper/<paper_id>/*` (draft.md / main.tex / review-N.md / changelog.md / rebuttal.md). See `.claude/rules/multi-paper.md` for the per-paper layout.
 - `docs/references.bib`.
-- All agent → agent / agent → Codex / agent → Gemini delegation prompts and responses.
+- All agent → agent and agent → Codex delegation prompts and responses.
 - All logs under `.claude/logs/`.
-- `.codex/AGENTS.md`, `.gemini/GEMINI.md`.
-- Keyword lists in `routing-keywords.json` (the literature being searched is largely English).
+- Root `AGENTS.md`.
 - Commit messages and PR descriptions.
 - Agent scratch / chain-of-thought notes.
 
@@ -37,7 +36,7 @@ There is exactly one Japanese-language surface in this repository: **the chat be
 
 ## Why this split
 
-- Specialist agents are addressed by Codex / Gemini, which prefer English.
+- Specialist agents and Codex receive English task briefs.
 - Logs are searched by other agents; consistency matters.
 - The paper is the artifact; it is in English (paper output language is configurable in Zone B but defaults to English).
 - The user reads chat replies in their native language for speed.

@@ -1,28 +1,32 @@
 ---
 name: analyze-results
-description: Run the pre-registered statistical analysis on a completed run. Produce effect sizes, CIs, and figures.
-when_to_use: After /run-experiment.
-inputs:
-  - data/results/<run_id>/
-  - docs/research/methodology.md
-outputs:
-  - docs/research/analysis.md (one ## Run <run_id> section appended per invocation)
-  - data/results/<run_id>/figures/{*.png,*.pdf}
-  - src/analysis/<name>_analysis.py
-delegated_agent: data-analyst
-next_skill: /review-figures (recommended), then /discuss-results
+description: Use Codex builder to compute statistics and ledgers, Codex reviewer to verify them, then author the canonical analysis narrative.
+when_to_use: After /run-experiment has produced a run directory with metadata.
 ---
 
 # /analyze-results
 
-## Steps for the orchestrator
+This skill has three phases:
 
-1. **Pre-flight.** `run_id` exists with valid `metadata.json`. If the user has multiple runs (replications), ask whether to analyze a single run, all of them, or a specific subset.
-2. **Launch** `data-analyst` with the run(s) and the locked methodology.
-3. **Receive** results. The agent labels confirmatory vs exploratory and provides effect sizes / CIs.
-4. **Sanity check** in the orchestrator: every reported number traces to a file under `data/results/<run_id>/`. If any number cannot be sourced, return to `data-analyst` with the gap.
-5. **Update Zone C**: `current_phase: analysis`, `next_action: "Run /review-figures, then /discuss-results"`.
+1. Codex builder computes analysis code, figures, `analysis.json`, and optional `analysis-report.md`.
+2. Fresh Codex reviewer checks statistics, assumptions, ledger traceability, and figure provenance.
+3. `scientific-author` mode `analysis-narrative` writes or appends canonical prose only after review findings are resolved.
 
-## Idempotence rule
+Required outputs:
+- `src/analysis/**`
+- `tests/**`
+- `data/results/<run_id>/analysis.json`
+- `data/results/<run_id>/analysis-report.md` when useful
+- `data/results/<run_id>/figures/**`
+- `docs/research/analysis.md`
 
-`/analyze-results` **always appends** a new `## Run <run_id>` section to `docs/research/analysis.md`. It never rewrites or removes a previously-recorded run. Use `/analyze-results --rewrite <run_id>` (or manually edit the file) if you genuinely need to replace a prior section — and document why under "Deviations" in `methodology.md`.
+Workflow:
+1. Validate `metadata.json` exists before analysis starts.
+2. Run builder with `python scripts/codex_research.py build <task-id> --prompt-file .claude/tasks/<task-id>/brief.md`.
+3. Validate the ledger with `python scripts/research_evidence.py validate-ledger data/results/<run_id>/analysis.json`.
+4. Run reviewer with `python scripts/codex_research.py review <review-task-id> --prompt-file .claude/tasks/<review-task-id>/brief.md`.
+   Include figure review in the rubric: data mapping, axes, intervals, sample sizes, transformations, and provenance against code and `analysis.json`.
+5. If figures were generated, optionally use `scientific-author` mode `static-figure-review` for readability, composition, caption clarity, and accessibility assessment.
+6. Author canonical prose with `[result:<result_id>]` references only after blocker/major findings are resolved.
+7. Run `python scripts/research_evidence.py trace-prose`.
+8. Update Zone C with `current_phase: analysis` and next action.

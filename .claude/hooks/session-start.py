@@ -17,11 +17,29 @@ def _project_root() -> Path:
 
 ZONE_B = re.compile(r"<!-- ZONE_B_BEGIN -->(.*?)<!-- ZONE_B_END -->", re.DOTALL)
 ZONE_C = re.compile(r"<!-- ZONE_C_BEGIN -->(.*?)<!-- ZONE_C_END -->", re.DOTALL)
-KV_RE = re.compile(r"^\s*([a-zA-Z_][\w]*)\s*:\s*(.+?)\s*$", re.MULTILINE)
+KV_RE = re.compile(r"^\s*([a-zA-Z_][\w]*)\s*:\s*(.*?)\s*$", re.MULTILINE)
 
 
-def parse_kv(block: str) -> dict[str, str]:
-    out: dict[str, str] = {}
+def normalize_scalar(value: str) -> str | None:
+    value = value.strip()
+    if value in {"null", "~"}:
+        return None
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        return value[1:-1]
+    return value
+
+
+def display_value(value: str | None, default: str = "(未設定)") -> str:
+    if value is None:
+        return "なし"
+    if value == "":
+        return default
+    return value
+
+
+def parse_kv(block: str) -> dict[str, str | None]:
+    """Parse only top-level (zero-indent) YAML keys inside code fences."""
+    out: dict[str, str | None] = {}
     in_yaml = False
     for line in block.splitlines():
         if line.strip().startswith("```"):
@@ -29,9 +47,11 @@ def parse_kv(block: str) -> dict[str, str]:
             continue
         if not in_yaml:
             continue
+        if line and line[0] in (" ", "\t", "-"):
+            continue
         m = KV_RE.match(line)
         if m:
-            out[m.group(1)] = m.group(2)
+            out[m.group(1)] = normalize_scalar(m.group(2))
     return out
 
 
@@ -53,11 +73,15 @@ def main() -> int:
         )
         return 0
 
-    theme = b.get("theme", "(未設定)")
-    rq = b.get("research_question", "(未設定)")
-    phase = c.get("current_phase", "not_started")
-    next_action = c.get("next_action", "(未設定)")
-    last_run = c.get("last_run_id", "null")
+    theme = display_value(b.get("theme"))
+    rq = display_value(b.get("research_question"))
+    phase = display_value(c.get("current_phase"), "not_started")
+    next_action = display_value(c.get("next_action"))
+    last_run = display_value(c.get("last_run_id"))
+    active_codex_task = c.get("active_codex_task")
+    task_line = (
+        f"\n  Codexタスク: {active_codex_task}" if active_codex_task is not None else ""
+    )
 
     print(
         "[session-start] 研究プロジェクトを読み込みました。\n"
@@ -65,6 +89,7 @@ def main() -> int:
         f"  RQ: {rq}\n"
         f"  現在のフェーズ: {phase}（最終 run_id: {last_run}）\n"
         f"  次のアクション: {next_action}"
+        f"{task_line}"
     )
     return 0
 

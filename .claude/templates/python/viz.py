@@ -5,14 +5,14 @@ belongs to the project — edit it freely to suit your taste.
 
 Design philosophy
 -----------------
-The orchestrator critiques rendered figures via the viz-reviewer agent
-(Gemini-backed), so this module deliberately does NOT enforce strong
-aesthetic opinions. It provides:
+The orchestrator critiques rendered figures via review agents, so this
+module deliberately does NOT enforce strong aesthetic opinions. It
+provides:
 
 1. Universal data       — colorblind-safe palettes, standard figure widths.
 2. Infrastructure       — multi-format save, caption sidecar, font-embedding
                           choice that affects post-render editability and
-                          cannot be fixed by Gemini after the fact.
+                          cannot be fixed by the reviewer after the fact.
 3. Named style profiles — "default" / "publication" / "presentation" as a
                           starting point. Add your own. Override via kwargs.
 4. A user preference    — read from CLAUDE.md Zone B `viz_preferences.
@@ -82,9 +82,9 @@ SLIDE_WIDTH = 6.0          # 16:9 slide column
 
 # ----- Universal infrastructure rcParams ------------------------------------
 # Everything here is invisible in the rendered figure but matters for
-# post-processing or accessibility. The viz-reviewer agent cannot detect
-# these problems from a rendered PNG, so it is appropriate to enforce them
-# at template level. They apply regardless of the chosen profile.
+# post-processing or accessibility. Review agents cannot detect these
+# problems from a rendered PNG, so it is appropriate to enforce them at
+# template level. They apply regardless of the chosen profile.
 _INFRASTRUCTURE_RCPARAMS: dict[str, Any] = {
     "pdf.fonttype": 42,    # TrueType — text editable in vector editors
     "ps.fonttype": 42,
@@ -218,8 +218,8 @@ def save_figure(
     """Save a figure consistently across formats and persist its caption.
 
     Writes a sidecar ``<name>.caption.txt`` if ``caption`` is given, so the
-    paper-writer agent can recover figure captions later without re-reading
-    the analysis script.
+    scientific-author agent can recover figure captions later without
+    re-reading the analysis script.
 
     Raises if the figure has no title and no caption argument and
     ``require_caption_or_title`` is True. This is a research-rigor check,

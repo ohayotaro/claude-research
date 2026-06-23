@@ -13,6 +13,7 @@ For every reported test:
 - Sample size (n).
 - Test name and assumptions checked.
 - Whether the test was pre-registered or exploratory.
+- A structured result ID from `data/results/<run_id>/analysis.json`.
 
 A bare p-value with no effect size and no CI is unacceptable.
 

@@ -1,92 +1,37 @@
 ---
 name: release-artifacts
-description: Prepare code and data for archival release (Zenodo / OSF / Dryad / institutional repo). Validates licenses, generates a data card, packages a citable archive, and emits the metadata needed for DOI registration. Repo-level release — one deposit may cover one or more papers in the same repo.
-when_to_use: After a paper is accepted (or alongside preprint posting). Reproducibility stops at local metadata.json without this skill — public release closes the loop.
-inputs:
-  - [--papers=<id1>,<id2>,...] optional comma-separated list of paper_ids to include (default: ask the user)
-  - [--tag=<release-tag>] optional release tag (default: v<major>.<minor> or release-<ISO-date>)
-  - The repo as committed (state to be archived)
-  - CLAUDE.md Zone B `papers:`, `ethics.data_sensitivity`
-  - data/raw/<file>.README.md sidecars (provenance per dataset)
-outputs:
-  - docs/release/<release-tag>/  (manifest, datacard, license, citation — FLAT, not paper-nested)
-  - docs/release/<release-tag>/CITATION.cff
-  - docs/release/<release-tag>/datacard.md
-  - docs/release/<release-tag>/manifest.json (includes "papers": [<id>, ...])
-  - docs/release/<release-tag>/zenodo.json (Zenodo deposition payload)
-delegated_agent: orchestrator + paper-writer (for citation text); literature-reviewer (for related-work pointers in datacard)
-next_skill: any (typically external upload to Zenodo/OSF after this)
+description: Prepare a local archival release package for code, data cards, manifests, and citation metadata; never deposit externally.
+when_to_use: After paper artifacts are accepted for release preparation.
 ---
 
 # /release-artifacts
 
-Closes the reproducibility loop by producing a release-ready bundle and the metadata that Zenodo / OSF / Dryad / a institutional archive expects. Does **not** upload — the human runs the upload from the generated bundle so the DOI lands in their account.
+This is a PM-orchestrated multi-phase skill. Codex builder handles deterministic packaging
+and validation. `scientific-author` writes human-facing citation, data-card, and limitation
+prose. The PM never deposits externally from this skill.
 
-A release is **repo-level**: a single deposit may cite one or more papers from this repository, since archives typically issue one DOI per archive even when multiple artefacts are covered.
+Outputs:
+- `docs/release/<release-tag>/`
+- optional `CITATION.cff`
+- manifests and data cards
 
-## Steps for the orchestrator
-
-1. **Filesystem state check** per `.claude/rules/multi-paper.md` §5.1 before resolving papers. On state A (clean legacy: `docs/paper/draft.md` or `main.tex` at depth 0, no nested dirs, no `papers:`), drive lazy migration per §5.2 with user confirmation. On state D/E, abort. A release that runs through migration must surface the migration result to the user before continuing.
-
-2. **Resolve which papers to include.**
-   - If `--papers=<id1>,<id2>` is provided, validate each id against Zone B `papers:` (each must exist).
-   - Else AskUserQuestion presenting the full registry with id / title / status; user picks ≥ 1.
-   - If exactly one paper exists in the registry and `--papers` is omitted, still confirm with the user (no silent default).
-
-3. **Pre-flight.**
-   - At least one `data/results/<run_id>/` exists with a complete `metadata.json` (otherwise nothing to archive).
-   - For each selected `paper_id`: `docs/paper/<paper_id>/draft.md` (or `main.tex` per `papers[id == <paper_id>].paper_format`) exists — releases must be paired with at least one paper.
-   - `CLAUDE.md` Zone B `ethics.data_sensitivity`: if `medium` / `high`, abort with a clear message — sensitive data needs an IRB-approved release plan, not this generic skill.
-
-4. **Determine release tag.** Use `--tag` if provided; else default to `v<major>.<minor>` if the user supplies a version, else `release-<ISO-date>`. Check git tags for collisions; suggest a bump. Releases live FLAT under `docs/release/<tag>/` — they are not nested by `paper_id`.
-
-5. **License check.**
-   - Repo root must have a LICENSE file. If missing, ask the user which license to add (default: MIT for code; CC-BY-4.0 for data; CC0 for raw data without privacy concerns).
-   - Each `data/raw/<file>.README.md` sidecar must declare a license / source license. Flag any missing.
-
-6. **Datacard generation** (`datacard.md`). Sections:
-   - Purpose / overview.
-   - Composition (datasets, sizes, formats).
-   - Provenance per dataset (from raw README sidecars).
-   - Collection methodology.
-   - Preprocessing applied (link to `src/` scripts).
-   - Papers covered by this release (list of `paper_id`, title, venue, status from Zone B).
-   - Recommended uses / known biases / limitations.
-   - License.
-   - Citation (cff format snippet).
-
-7. **Code-release packaging.**
-   - Generate `manifest.json` with sha256 of every file under `src/`, `tests/`, `data/processed/`, `data/results/<run_id>/`, and `docs/paper/<paper_id>/` for each selected `paper_id`.
-   - Top level of `manifest.json` includes `"papers": ["<id1>", "<id2>", ...]` so downstream tooling can resolve which papers a deposit covers.
-   - Exclude `data/raw/` if `data_sensitivity != none` (privacy-preserving release); include otherwise.
-   - Run `/lint` once to confirm green; record the result in the manifest.
-
-8. **CITATION.cff.**
-   - Author block from a `CITATION.cff` template the user fills, OR auto-extract from git log + Zone B if Zone B has author info.
-   - Title: if one paper is selected, use its title; if multiple, use the repo theme from Zone B and list paper titles under `references`.
-   - Version = release tag.
-   - DOI placeholder (filled after Zenodo registration).
-   - `references:` block lists each selected paper's title / venue / status.
-
-9. **Zenodo deposition payload** (`zenodo.json`).
-   - Pre-filled with title, description (paper abstract — concatenated if multiple papers, with a divider), creators, keywords (from Zone B), license, related identifiers (paper DOIs when known, one per selected paper).
-   - User uploads the bundle to Zenodo and pastes the resulting DOI back into `CITATION.cff`.
-
-10. **Surface to user** (Japanese, polite, no emojis):
-    - Bundle path: `docs/release/<release-tag>/`.
-    - Selected papers (id / title).
-    - License decisions made.
-    - Items needing human review (DOI placeholder, sensitive data exclusions).
-    - Step-by-step Zenodo / OSF upload instructions inline (the skill does not auto-upload).
-
-11. **Update Zone C**: `current_phase: release`, `last_skill_run: release-artifacts`, `next_action: "Upload bundle to Zenodo, then update CITATION.cff with the resulting DOI"`. Set `last_paper_id` to the first selected paper id (or null if multiple).
-
-## Hard rules
-
-- **Releases are repo-level, flat-layout.** Path is `docs/release/<tag>/`, NOT `docs/release/<paper_id>/<tag>/`. This supports combined deposits covering multiple papers — the deposit cites all of them.
-- **Each `paper_id` in the deposit MUST exist in Zone B `papers:` AND have a draft.** Releasing for an unregistered or empty paper is rejected.
-- **Never include `data/raw/` in a release if `ethics.data_sensitivity` ≠ `none`.** Privacy-preserving release excludes raw data and references the original source instead.
-- **Never auto-upload.** Bundle is local; the user runs the upload step so the deposit lands in their identity.
-- **License must be declared.** Cannot proceed without a LICENSE file at repo root and license fields in each `data/raw/<file>.README.md`.
-- **Citation must be machine-readable.** `CITATION.cff` is mandatory; plain-text citation alone is insufficient for archival systems.
-- **Per-paper format precedence.** When manifesting paper files, use each `papers[id == <id>].paper_format` independently. Never assume one format applies to all selected papers.
+Workflow:
+1. Resolve `--papers` argument: if omitted, ask the user which `paper_id`s to include. Validate each against Zone B `papers:` registry per multi-paper.md §4.
+2. PM validates registry and pre-conditions: selected papers exist, release tag is resolved,
+   licenses are known, data sensitivity and raw-data exclusions are clear, reproducibility
+   metadata exists, result ledgers are available, and required manuscript artifacts are local.
+3. PM creates `.claude/tasks/<task-id>/brief.md` for Codex builder with selected paper IDs,
+   release tag, output directory, inclusion/exclusion rules, data sensitivity constraints,
+   and validation requirements for manifest generation, package integrity, checksums,
+   reproducibility metadata, ledger availability, and raw-data exclusions.
+4. PM runs `python scripts/codex_research.py build <task-id> --prompt-file .claude/tasks/<task-id>/brief.md`.
+5. PM invokes `scientific-author` with mode `release-prose` for
+   `docs/release/<release-tag>/datacard.md`, prose fields in
+   `docs/release/<release-tag>/CITATION.cff`, and limitation prose. The invocation must
+   exclude manifests, checksums, package artifacts, deposit payloads, and generated evidence.
+6. PM reruns package validation and evidence traceability checks when release prose changes.
+7. Require final explicit user approval before any external deposit, DOI creation, upload,
+   credential use, or release. Do not include `data/raw/**` when Zone B data sensitivity is
+   not `none` unless the user explicitly approves.
+8. PM updates Zone C with `current_phase: release`, `last_skill_run: release-artifacts`,
+   and next action.

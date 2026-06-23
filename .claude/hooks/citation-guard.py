@@ -15,6 +15,7 @@ import os
 import re
 import sys
 from pathlib import Path
+from typing import Any
 
 # A claim sentence is: declarative, > 8 words, contains a "claim verb",
 # does NOT already contain [@something] or \cite{...} or "we" / "our" (which
@@ -117,7 +118,7 @@ def is_doc_path(path: str) -> bool:
     return True
 
 
-def extract_new_content(payload: dict) -> str:
+def extract_new_content(payload: dict[str, Any]) -> str:
     tool_name = payload.get("tool_name", "")
     inp = payload.get("tool_input", {})
     if tool_name == "Write":
@@ -169,7 +170,10 @@ def main() -> int:
         lines.append(f"  - {f}")
     if len(findings) > 5:
         lines.append(f"  ...他 {len(findings) - 5} 件")
-    lines.append("該当箇所に [@citekey] を追記するか、自分の貢献として we/our 文に書き換えてください。")
+    lines.append(
+        "該当箇所に [@citekey] を追記するか、"
+        "自分の貢献として we/our 文に書き換えてください。"
+    )
     print("\n".join(lines))
     return 0
 
