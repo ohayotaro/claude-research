@@ -133,3 +133,33 @@ def test_multi_phase_skills_have_explicit_invocations() -> None:
         )
         for marker in markers:
             assert marker in text, f"{marker!r} missing from {name}"
+
+
+def test_editorial_policy_markers_present() -> None:
+    required = {
+        ".claude/rules/writing-style.md": [
+            "## Artifact purposes",
+            "## Placement of content and caveats",
+            "## Terminology",
+        ],
+        ".claude/rules/research-integrity.md": [
+            "never by whether a result is favorable",
+        ],
+        ".claude/agents/scientific-author.md": [
+            "## Editorial Brief",
+            "## Revision Operations",
+            "consolidation",
+            "relocation",
+        ],
+        ".claude/skills/write-paper/SKILL.md": ["editorial brief"],
+        ".claude/skills/peer-review/SKILL.md": ["Editorial assessment"],
+        ".claude/skills/revise/SKILL.md": ["consolidation", "relocation"],
+        ".claude/skills/checkpoint/SKILL.md": ["`notes` is at most 4 lines", "stale:"],
+        ".claude/rules/language.md": ["## Clarity"],
+        "CLAUDE.md": ["### Communication"],
+    }
+    # Markers check structure only; readability is judged by review, not by tests.
+    for rel, markers in required.items():
+        text = " ".join((ROOT / rel).read_text(encoding="utf-8").split())
+        for marker in markers:
+            assert marker in text, f"{marker!r} missing from {rel}"
