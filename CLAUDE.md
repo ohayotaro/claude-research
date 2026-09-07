@@ -183,16 +183,16 @@ active_agent: null
 last_skill_run: checkpoint
 last_run_id: null
 recent_artifacts:
-  - .codex/plans/2026-09-07-writing-and-pm-communication.md
   - .codex/plans/2026-09-07-writing-and-pm-communication-tasks.md
-  - .claude/tasks/editorial-policy-review-1/review.md
   - .claude/tasks/editorial-policy-review-2/review.md
+  - scripts/update.sh
 last_paper_id: null
 active_codex_task: null
-next_action: "Commit the editorial-policy template changes (11 files), then run /init-research to start project work."
+next_action: "Decide whether to commit or delete the 8 pre-existing untracked task records under .claude/tasks, then run /init-research to start project work."
 notes: |
-  Template change: manuscript focus and plain-language PM rules, all 8 tasks implemented; task list is in .codex/plans.
-  Independent Codex review accepted the diff on the second pass; both reviews are under .claude/tasks.
-  Changes are uncommitted. Research project (Zone B) is still uninitialized.
+  Editorial policy (PR #2) and update.sh/task-tracking fix (PR #3) are merged into main.
+  Both were applied to /Users/ryotaro/ieee-mic-abstract via update.sh; that repo's changes are uncommitted and it needs a Claude Code restart.
+  Open: 8 old task records became visible after the .gitignore change; user has not decided whether to keep them.
+  Research project (Zone B) is still uninitialized.
 ```
 <!-- ZONE_C_END -->
