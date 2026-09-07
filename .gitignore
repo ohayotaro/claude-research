@@ -31,7 +31,10 @@ Thumbs.db
 
 # Claude Code logs
 .claude/logs/
-.claude/tasks/
+.claude/tmp/
+# Task records (briefs, reviews, build results) are tracked; runner state/logs are not.
+.claude/tasks/*/state.json
+.claude/tasks/*/events.jsonl
 
 # Backups created by scripts/update.sh
 .update-backup-*/

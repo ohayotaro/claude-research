@@ -179,9 +179,11 @@ git clone https://github.com/ohayotaro/claude-research.git ../template
 bash scripts/update.sh --source ../template
 ```
 
-The updater preserves Zone B, Zone C, `.claude/logs/**`, `.claude/tasks/**`, `docs/**`,
-`src/**`, `data/**`, `notebooks/**`, and `tests/**`. It syncs the template-owned Claude
-layer, root `AGENTS.md`, and scripts, and removes known obsolete legacy paths. Restart
+The updater preserves Zone B, Zone C, `.claude/logs/**`, `.claude/tasks/**`,
+`.claude/tmp/**`, `.claude/settings.local.json`, project-owned files under `scripts/`,
+`docs/**`, `src/**`, `data/**`, `notebooks/**`, and `tests/**`. It syncs the template-owned
+Claude layer, root `AGENTS.md`, and template scripts, and removes known obsolete legacy
+paths (a legacy `.codex/` is removed only when it has no `plans/` directory). Restart
 Claude Code after updating so agents, skills, and hooks are reloaded.
 
 If a protected environment prevents deletion of an obsolete `.codex` directory, remove it
