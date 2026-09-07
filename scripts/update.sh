@@ -3,7 +3,9 @@
 #
 # Preserved:
 #   - CLAUDE.md Zone B and Zone C
-#   - .claude/logs/** and .claude/tasks/**
+#   - .claude/logs/**, .claude/tasks/**, .claude/tmp/**, .claude/settings.local.json
+#   - project-owned files under scripts/ (template scripts are overwritten; other
+#     files are left in place; retired template scripts are removed by name below)
 #   - docs/**, src/**, data/**, notebooks/**, tests/**
 #   - project-owned pyproject.toml, README.md, .gitignore, uv.lock
 #
@@ -131,13 +133,17 @@ if [[ -d "$SOURCE/.claude" ]]; then
         --exclude='logs/**' \
         --exclude='tasks/' \
         --exclude='tasks/**' \
+        --exclude='tmp/' \
+        --exclude='tmp/**' \
+        --exclude='settings.local.json' \
         "$SOURCE/.claude/" ".claude/"
     ok "synced .claude/"
 fi
 
 if [[ -d "$SOURCE/scripts" ]]; then
-    rsync -a --delete "$SOURCE/scripts/" "scripts/"
-    ok "synced scripts/"
+    # No --delete: projects keep their own scripts alongside template ones.
+    rsync -a "$SOURCE/scripts/" "scripts/"
+    ok "synced scripts/ (project-owned scripts preserved)"
 fi
 
 cp "$SOURCE/CLAUDE.md" CLAUDE.md
@@ -152,9 +158,12 @@ elif [[ -f "$BACKUP_DIR/AGENTS.md.before" ]]; then
 fi
 
 bold "Removing known obsolete template paths"
+if [[ -d .codex && ! -d .codex/plans ]]; then
+    rm -rf .codex
+    ok "removed legacy .codex (no plans/ inside)"
+fi
 for path in \
     .gemini \
-    .codex \
     .claude/skills/ask-gemini \
     .claude/agents/gemini-explore.md \
     .claude/agents/literature-reviewer.md \

@@ -1,0 +1,351 @@
+diff --git a/.claude/agents/scientific-author.md b/.claude/agents/scientific-author.md
+index dc58f02..3b27826 100644
+--- a/.claude/agents/scientific-author.md
++++ b/.claude/agents/scientific-author.md
+@@ -62,6 +62,42 @@ generated statistical evidence.
+ - Negative, null, failed, and inconclusive findings must be represented honestly.
+ - Preserve uncertainty. Distinguish evidence, inference, and speculation.
+ 
++## Artifact Purposes
++
++Follow `.claude/rules/writing-style.md` "Artifact purposes". Research modes
++(`literature-synthesis`, `gap-analysis`, `hypothesis-writing`, `methodology-writing`,
++`analysis-narrative`, `discussion-writing`) write the process record: decisions,
++alternatives, failures, and diagnostics. Manuscript modes (`manuscript-drafting`,
++`revision-and-rebuttal`, `submission-prose`) write the argument for the intended reader,
++reorganized around the research question. Never transcribe research notes into a manuscript.
++
++## Editorial Brief
++
++In `manuscript-drafting` and `revision-and-rebuttal` modes, before substantial drafting,
++state a short editorial brief at the top of your handoff (not a separate mandatory artifact):
++
++- Intended audience, article type, and known venue constraints.
++- Research question and the central evidence-supported message.
++- Scientific contributions, listed separately from quality-control procedures
++  (calibration checks, exploratory/confirmatory separation, disclosure practices) and
++  from limitations.
++- Section outline, provisional length allocation, and essential figures and tables.
++- Destination of each supporting item: main text, supplement, or research record.
++
++Use the existing context and reasonable provisional assumptions. Ask the Research Lead only
++when a missing choice would materially change scope.
++
++Editorial selection changes presentation only. It must not alter registered hypotheses,
++endpoints, analysis status (exploratory vs confirmatory), or multiplicity decisions after
++results have been observed.
++
++## Revision Operations
++
++In `revision-and-rebuttal` mode, for each substantive finding choose among correction,
++deletion, consolidation, or relocation, not only addition. After resolving all findings,
++pass over the whole manuscript so local fixes do not accumulate into repetitive prose or
++scattered caveats. Never remove a justified caveat merely to produce a cleaner story.
++
+ ## Workflow
+ 
+ 1. Read `CLAUDE.md` Zone B and the calling skill's explicit inputs.
+diff --git a/.claude/rules/language.md b/.claude/rules/language.md
+index a98b109..c296812 100644
+--- a/.claude/rules/language.md
++++ b/.claude/rules/language.md
+@@ -34,6 +34,30 @@ There is exactly one Japanese-language surface in this repository: **the chat be
+ - **User free-text input.** When the user types a research theme or RQ in Japanese, store it verbatim in `CLAUDE.md` Zone B. Agents translate to English when they materialize content under `docs/research/`.
+ - **When unsure, choose English.** Keep the rule simple.
+ 
++## Clarity (applies to the Japanese chat surface)
++
++The chat is where the user makes decisions. Its language must be plain regardless of how
++much internal structure produced the result.
++
++- Lead with the answer or finding, then the reason, then the next action if any.
++- Prefer the user's own vocabulary and established disciplinary terminology. Do not invent
++  names, acronyms, or classifications for ordinary concepts.
++- When a new definition is necessary, give its purpose and a concrete example, and say
++  whether it is study-specific or established usage.
++- Explain the subject before displaying an internal identifier. IDs support traceability;
++  they do not replace meaning.
++- Translate agent handoffs into what was done, what was found, and what is unresolved.
++- Provide technical depth when requested or when a decision needs it.
++
++Illustrative wording. Chat (Japanese):
++「感度補正の検定は校正チェックに失敗したので、測定値は記述統計として報告し、その検定に
++基づく改善は主張できません。」
++Manuscript (English): "The sensitivity-correction test failed its calibration check, so we
++report the measurements descriptively and cannot claim an improvement from that test."
++
++A glossary is not a substitute for avoiding unnecessary terminology. Do not create a
++terminology registry unless the project actually needs one.
++
+ ## Why this split
+ 
+ - Specialist agents and Codex receive English task briefs.
+diff --git a/.claude/rules/research-integrity.md b/.claude/rules/research-integrity.md
+index b3301b4..cb92303 100644
+--- a/.claude/rules/research-integrity.md
++++ b/.claude/rules/research-integrity.md
+@@ -10,10 +10,14 @@ These rules are non-negotiable. Any agent or skill that violates them is wrong,
+ - **No selective reporting.** If you ran 5 experiments and 1 supports the hypothesis, you must report all 5. Cherry-picking is fabrication by omission.
+ - **No p-hacking.** See `statistical-rigor.md`.
+ 
+-## Negative results
++## Negative results and placement
+ 
+-- Negative, null, and inconclusive results are first-class. Report them in `docs/research/analysis.md` and in each affected paper's `docs/paper/<paper_id>/draft.md` (or `main.tex`). Do not bury them in supplementary material unless the user explicitly asks.
++- Negative, null, and inconclusive results are first-class. The research record (`docs/research/analysis.md`) keeps every result in full. Each affected paper reports them through a summary in the main text (`docs/paper/<paper_id>/draft.md` or `main.tex`) plus a referenced supplement where detail is needed.
++- Main text always keeps: primary endpoint outcomes, consequential failures, important departures from the protocol, and any evidence that qualifies or contradicts the central claim.
++- Detailed breakdowns and supporting checks may go in a supplement that the main text references. Placement is decided by relevance and interpretive importance, never by whether a result is favorable or statistically significant. A central limitation is never confined to a supplement.
++- Placement does not change the record: every run, research note, citation, and result-ID reference is preserved wherever the prose lands.
+ - A failed experiment is data. Do not delete its `run_id` directory.
++- Artifact purposes and the main-text/supplement decision rule are defined in `writing-style.md`.
+ - When transferring numerical claims into canonical prose, cite the structured ledger result as `[result:<result_id>]` or `[result:<run_id>:<result_id>]`.
+ 
+ ## Data handling
+diff --git a/.claude/rules/writing-style.md b/.claude/rules/writing-style.md
+index 5047fa8..5d56e99 100644
+--- a/.claude/rules/writing-style.md
++++ b/.claude/rules/writing-style.md
+@@ -2,6 +2,59 @@
+ 
+ All paper drafts and `docs/research/*` notes are written in English.
+ 
++## Artifact purposes
++
++Each written artifact serves one purpose. Write for that purpose; do not reuse text from one
++artifact as another.
++
++- **Research notes** (`docs/research/**`) are the process record. They preserve decisions,
++  alternatives considered, failures, diagnostics, and enough detail to reconstruct how the
++  work was done.
++- **Main manuscript** (`docs/paper/<paper_id>/draft.md` or `main.tex`) is the argument for
++  the intended reader. It explains the research question, the methods needed to judge the
++  evidence, the relevant results, their interpretation, and the consequential limitations.
++- **Supplements** hold detailed protocols, additional analyses, and condition-level results.
++  Every supplement item is referenced from the main text where it supports a claim.
++- **Task artifacts and changelogs** (`.claude/tasks/**`, `docs/paper/<paper_id>/changelog.md`)
++  preserve orchestration and implementation history. They are not sources of manuscript prose.
++
++## Manuscript organization
++
++- Reorganize the accepted evidence around the research question. Do not concatenate
++  research notes and do not follow the chronology of development.
++- Contributions are scientific findings or methods. Quality-control procedures (calibration
++  checks, exploratory/confirmatory separation, disclosure practices) and limitations are
++  reported, but they are not contributions unless they establish an independent result.
++- Adapt structure to the field and article type. IMRaD below is the default, not a universal
++  section or page limit.
++
++## Placement of content and caveats
++
++Decide main text versus supplement versus research record by relevance and interpretive
++importance. Never decide by whether a result is favorable or statistically significant.
++
++- Main text always keeps: primary endpoint outcomes, consequential failures, important
++  departures from the protocol, and evidence that qualifies or contradicts the central claim.
++- Supplements may hold detailed breakdowns and supporting checks, with a reference from the
++  main text. A central limitation is never confined to a supplement.
++- Explain a caveat fully once, in the location where it applies. Elsewhere state its
++  implication or refer back; do not repeat its procedural history.
++- Limitations in the abstract are proportionate to their interpretive importance. Procedural
++  history (which tests were excluded, which comparisons were not made) belongs in Methods or
++  Discussion unless it changes how the reader should read the main finding.
++- Underlying runs, research records, citations, and result-ID traceability are preserved
++  regardless of where the prose lands. See `research-integrity.md`.
++
++## Terminology
++
++- Prefer established disciplinary terms and the user's own vocabulary.
++- Do not coin project-specific labels, acronyms, or classifications for ordinary concepts.
++  If an ordinary description works, use it.
++- When a new term is necessary, define it on first use with its purpose and a concrete
++  example, and say whether it is a study-specific definition or established usage.
++- Explain the subject before showing an internal identifier (run ID, result ID, task ID).
++  Identifiers are for traceability, not substitutes for meaning.
++
+ ## Structure: IMRaD
+ 
+ - **Introduction** — context, gap, contribution claims, paper structure.
+@@ -40,7 +93,10 @@ All paper drafts and `docs/research/*` notes are written in English.
+ 
+ ## Length discipline
+ 
+-- Default to brevity. If a sentence does not change the reader's understanding, cut it.
++- Brevity comes from selection, not from deleting consequential content. Decide what the
++  reader needs to judge the claim, then cut sentences that do not change that judgment.
++- Do not shorten by removing a limitation that qualifies the main finding; relocate or
++  condense it instead, following the placement rules above.
+ - No "In this paper, we will discuss ..." filler. Start with substance.
+ 
+ ## Forbidden phrases
+diff --git a/.claude/skills/checkpoint/SKILL.md b/.claude/skills/checkpoint/SKILL.md
+index 9a4c27a..9078e65 100644
+--- a/.claude/skills/checkpoint/SKILL.md
++++ b/.claude/skills/checkpoint/SKILL.md
+@@ -32,3 +32,44 @@ notes: |
+ ```
+ 
+ `last_paper_id` is only a hint. Skills must still resolve paper IDs explicitly.
++
++Content rules:
++- Zone C holds current state only: objectives, accepted decisions, unresolved issues, the
++  next action, and paths to detailed records. It is loaded into every session, so anything
++  stored here shapes future PM replies.
++- Field values are schema-typed. `last_run_id` is a run ID, `last_skill_run` is a skill
++  name, `recent_artifacts` is a list of paths. Do not put narrative into typed fields.
++- `notes` is at most 4 lines. No retrospectives, self-evaluation, emphatic language, or
++  bare chains of identifiers. Explain the subject before any ID.
++- Correction histories and retrospectives go to a Research Lead-owned task record under
++  `.claude/tasks/<task-id>/`; link it from `notes` or `recent_artifacts` instead of
++  restating it. An existing paper changelog may be referenced but is written only by
++  `scientific-author` through `/revise`; a checkpoint never writes it.
++- Unresolved caveats and approval boundaries stay in `notes` until resolved. Keeping them
++  takes precedence over the 4-line limit; if space is short, shorten other lines first.
++
++Stale context:
++- If an existing note references a retired skill, agent, or field, update only the
++  obsolete name (or add one `stale:` line naming the item and its replacement). Keep every
++  unresolved caveat and approval boundary the note carried.
++- Never edit Zone B during a checkpoint. If Zone B mentions retired components, add a
++  `stale:` line to `notes` and tell the user to update it via `/init-research`.
++
++Example:
++
++```yaml
++current_phase: revision
++active_agent: null
++last_skill_run: revise
++last_run_id: 2026-09-01T10-12-03_a1b2c3d4
++recent_artifacts:
++  - docs/paper/main/review-1.md
++  - docs/paper/main/changelog.md
++last_paper_id: main
++active_codex_task: null
++next_action: "Run /peer-review main to check the revised draft."
++notes: |
++  Review 1 major findings addressed; changelog has the details.
++  Calibration failure for the sensitivity test is reported descriptively; keep it in main text.
++  stale: Zone B lists agent `figure-reviewer`; replaced by static-figure-review in /analyze-results.
++```
+diff --git a/.claude/skills/discuss-results/SKILL.md b/.claude/skills/discuss-results/SKILL.md
+index 4ce6577..bf91ef5 100644
+--- a/.claude/skills/discuss-results/SKILL.md
++++ b/.claude/skills/discuss-results/SKILL.md
+@@ -23,4 +23,5 @@ Workflow:
+ 1. Discuss what the results support, do not support, and leave unresolved.
+ 2. Include negative, null, failed, and inconclusive findings.
+ 3. Ground literature comparisons in cite keys and numerical claims in result IDs.
+-4. Update Zone C with `current_phase: discussion` and next action.
++4. Rank limitations by interpretive importance and state the implication of each once. Do not restate procedural history already recorded in `methodology.md` or `analysis.md`; refer to it.
++5. Update Zone C with `current_phase: discussion` and next action.
+diff --git a/.claude/skills/peer-review/SKILL.md b/.claude/skills/peer-review/SKILL.md
+index 162b5fc..e6edebe 100644
+--- a/.claude/skills/peer-review/SKILL.md
++++ b/.claude/skills/peer-review/SKILL.md
+@@ -19,7 +19,10 @@ Output:
+ 
+ Workflow:
+ 1. Resolve `paper_id` per multi-paper.md §4 (confirm even with a single registry entry).
+-2. Create a task brief with the manuscript path and review rubric.
++2. Create a task brief with the manuscript path and review rubric. The rubric has two parts:
++   - Scientific review: logic, reporting completeness, statistical validity, and evidence alignment (citations and result IDs).
++   - Editorial assessment: whether the contribution is understandable without project history; whether methods and limitations are complete at the right level and location (main text vs supplement); whether repetition, unnecessary definitions, or process narratives obscure the findings; whether figures and tables communicate the mechanism and evidence.
++   Ask the reviewer to report each part separately, with severity (blocker / major / minor) per finding, and to flag any caveat that should be kept even if it reads as verbose.
+ 3. Run `python scripts/codex_research.py review <task-id> --prompt-file .claude/tasks/<task-id>/brief.md`.
+ 4. Save the reviewer final message as `docs/paper/<paper_id>/review-<n>.md`.
+ 5. Do not let the reviewer modify files.
+diff --git a/.claude/skills/revise/SKILL.md b/.claude/skills/revise/SKILL.md
+index f86bca0..effdd61 100644
+--- a/.claude/skills/revise/SKILL.md
++++ b/.claude/skills/revise/SKILL.md
+@@ -24,7 +24,9 @@ Outputs:
+ Workflow:
+ 1. Resolve `paper_id` per multi-paper.md §4 (confirm even with a single registry entry).
+ 2. Address blocker/major findings first.
+-3. Record substantive changes in the changelog.
+-4. Do not weaken limitations or reframe exploratory findings as confirmatory.
+-5. Re-run citation and result-ID traceability checks.
+-6. Update Zone C with `current_phase: revision` and next action.
++3. For each finding choose correction, deletion, consolidation, or relocation, not only addition. Editorial findings (repetition, unnecessary terminology, misplaced detail) are resolved by moving or condensing, never by dropping a justified caveat.
++4. After all findings are resolved, pass over the whole manuscript so local fixes do not accumulate into repetitive prose or scattered caveats.
++5. Record substantive changes in the changelog.
++6. Do not weaken limitations or reframe exploratory findings as confirmatory.
++7. Re-run citation and result-ID traceability checks.
++8. Update Zone C with `current_phase: revision` and next action.
+diff --git a/.claude/skills/write-paper/SKILL.md b/.claude/skills/write-paper/SKILL.md
+index 54afd4f..d35ffb5 100644
+--- a/.claude/skills/write-paper/SKILL.md
++++ b/.claude/skills/write-paper/SKILL.md
+@@ -21,7 +21,9 @@ Output:
+ 
+ Workflow:
+ 1. Resolve `paper_id` per multi-paper.md §4 (confirm even with a single registry entry). If an unknown `paper_id` is passed, enter the `/add-paper` flow to register it before writing.
+-2. Preserve claim-evidence alignment and result-ID citations.
+-3. Do not add unsupported novelty, priority, causal, or numerical claims.
+-4. Run prose traceability checks before handoff.
+-5. Update Zone C with `current_phase: writing`, `last_paper_id`, and next action.
++2. Produce the editorial brief defined in `scientific-author` (audience, central message, contributions separated from quality-control procedures and limitations, outline, and main/supplement/record destination for each result family) before drafting.
++3. Reorganize the accepted evidence around the research question. Do not transcribe research notes or follow development chronology; apply the placement rules in `writing-style.md`.
++4. Preserve claim-evidence alignment and result-ID citations.
++5. Do not add unsupported novelty, priority, causal, or numerical claims.
++6. Run prose traceability checks before handoff.
++7. Update Zone C with `current_phase: writing`, `last_paper_id`, and next action.
+diff --git a/CLAUDE.md b/CLAUDE.md
+index 0e6837f..3112799 100644
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -18,6 +18,17 @@ judgment owner, and final acceptance owner. Speak with the user in Japanese by d
+ You do not routinely implement experiment or analysis code, and you do not absorb long
+ canonical drafting when the `scientific-author` subagent is appropriate.
+ 
++### Communication
++
++- Lead with the answer or finding, then its reason, then any required next action.
++- Use the user's vocabulary and established disciplinary terms. Do not invent names,
++  acronyms, or classifications for ordinary concepts.
++- Explain the subject before showing an internal identifier (run ID, result ID, task ID).
++  Identifiers are for traceability, not substitutes for meaning.
++- Translate agent and Codex handoffs into reader-facing explanations of what was done,
++  what was found, and what remains open.
++- Give technical depth when the user asks for it or when a decision depends on it.
++
+ The active roles are:
+ 
+ | Role | Responsibility |
+diff --git a/tests/test_repository_contract.py b/tests/test_repository_contract.py
+index e84c5e5..0166297 100644
+--- a/tests/test_repository_contract.py
++++ b/tests/test_repository_contract.py
+@@ -133,3 +133,33 @@ def test_multi_phase_skills_have_explicit_invocations() -> None:
+         )
+         for marker in markers:
+             assert marker in text, f"{marker!r} missing from {name}"
++
++
++def test_editorial_policy_markers_present() -> None:
++    required = {
++        ".claude/rules/writing-style.md": [
++            "## Artifact purposes",
++            "## Placement of content and caveats",
++            "## Terminology",
++        ],
++        ".claude/rules/research-integrity.md": [
++            "never by whether a result is favorable",
++        ],
++        ".claude/agents/scientific-author.md": [
++            "## Editorial Brief",
++            "## Revision Operations",
++            "consolidation",
++            "relocation",
++        ],
++        ".claude/skills/write-paper/SKILL.md": ["editorial brief"],
++        ".claude/skills/peer-review/SKILL.md": ["Editorial assessment"],
++        ".claude/skills/revise/SKILL.md": ["consolidation", "relocation"],
++        ".claude/skills/checkpoint/SKILL.md": ["`notes` is at most 4 lines", "stale:"],
++        ".claude/rules/language.md": ["## Clarity"],
++        "CLAUDE.md": ["### Communication"],
++    }
++    # Markers check structure only; readability is judged by review, not by tests.
++    for rel, markers in required.items():
++        text = " ".join((ROOT / rel).read_text(encoding="utf-8").split())
++        for marker in markers:
++            assert marker in text, f"{marker!r} missing from {rel}"
