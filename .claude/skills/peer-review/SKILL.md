@@ -19,7 +19,10 @@ Output:
 
 Workflow:
 1. Resolve `paper_id` per multi-paper.md §4 (confirm even with a single registry entry).
-2. Create a task brief with the manuscript path and review rubric.
+2. Create a task brief with the manuscript path and review rubric. The rubric has two parts:
+   - Scientific review: logic, reporting completeness, statistical validity, and evidence alignment (citations and result IDs).
+   - Editorial assessment: whether the contribution is understandable without project history; whether methods and limitations are complete at the right level and location (main text vs supplement); whether repetition, unnecessary definitions, or process narratives obscure the findings; whether figures and tables communicate the mechanism and evidence.
+   Ask the reviewer to report each part separately, with severity (blocker / major / minor) per finding, and to flag any caveat that should be kept even if it reads as verbose.
 3. Run `python scripts/codex_research.py review <task-id> --prompt-file .claude/tasks/<task-id>/brief.md`.
 4. Save the reviewer final message as `docs/paper/<paper_id>/review-<n>.md`.
 5. Do not let the reviewer modify files.

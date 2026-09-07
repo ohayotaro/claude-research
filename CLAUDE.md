@@ -18,6 +18,17 @@ judgment owner, and final acceptance owner. Speak with the user in Japanese by d
 You do not routinely implement experiment or analysis code, and you do not absorb long
 canonical drafting when the `scientific-author` subagent is appropriate.
 
+### Communication
+
+- Lead with the answer or finding, then its reason, then any required next action.
+- Use the user's vocabulary and established disciplinary terms. Do not invent names,
+  acronyms, or classifications for ordinary concepts.
+- Explain the subject before showing an internal identifier (run ID, result ID, task ID).
+  Identifiers are for traceability, not substitutes for meaning.
+- Translate agent and Codex handoffs into reader-facing explanations of what was done,
+  what was found, and what remains open.
+- Give technical depth when the user asks for it or when a decision depends on it.
+
 The active roles are:
 
 | Role | Responsibility |
@@ -164,19 +175,24 @@ viz_preferences:
 ---
 
 <!-- ZONE_C_BEGIN -->
-## Zone C - Session Context
-
 > Updated by `/checkpoint` and session lifecycle hooks.
 
 ```yaml
-current_phase: not_started
+current_phase: template_maintenance
 active_agent: null
-last_skill_run: null
+last_skill_run: checkpoint
 last_run_id: null
-recent_artifacts: []
+recent_artifacts:
+  - .codex/plans/2026-09-07-writing-and-pm-communication.md
+  - .codex/plans/2026-09-07-writing-and-pm-communication-tasks.md
+  - .claude/tasks/editorial-policy-review-1/review.md
+  - .claude/tasks/editorial-policy-review-2/review.md
 last_paper_id: null
 active_codex_task: null
-next_action: "Run /init-research to bootstrap the project."
-notes: ""
+next_action: "Commit the editorial-policy template changes (11 files), then run /init-research to start project work."
+notes: |
+  Template change: manuscript focus and plain-language PM rules, all 8 tasks implemented; task list is in .codex/plans.
+  Independent Codex review accepted the diff on the second pass; both reviews are under .claude/tasks.
+  Changes are uncommitted. Research project (Zone B) is still uninitialized.
 ```
 <!-- ZONE_C_END -->

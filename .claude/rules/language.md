@@ -34,6 +34,30 @@ There is exactly one Japanese-language surface in this repository: **the chat be
 - **User free-text input.** When the user types a research theme or RQ in Japanese, store it verbatim in `CLAUDE.md` Zone B. Agents translate to English when they materialize content under `docs/research/`.
 - **When unsure, choose English.** Keep the rule simple.
 
+## Clarity (applies to the Japanese chat surface)
+
+The chat is where the user makes decisions. Its language must be plain regardless of how
+much internal structure produced the result.
+
+- Lead with the answer or finding, then the reason, then the next action if any.
+- Prefer the user's own vocabulary and established disciplinary terminology. Do not invent
+  names, acronyms, or classifications for ordinary concepts.
+- When a new definition is necessary, give its purpose and a concrete example, and say
+  whether it is study-specific or established usage.
+- Explain the subject before displaying an internal identifier. IDs support traceability;
+  they do not replace meaning.
+- Translate agent handoffs into what was done, what was found, and what is unresolved.
+- Provide technical depth when requested or when a decision needs it.
+
+Illustrative wording. Chat (Japanese):
+「感度補正の検定は校正チェックに失敗したので、測定値は記述統計として報告し、その検定に
+基づく改善は主張できません。」
+Manuscript (English): "The sensitivity-correction test failed its calibration check, so we
+report the measurements descriptively and cannot claim an improvement from that test."
+
+A glossary is not a substitute for avoiding unnecessary terminology. Do not create a
+terminology registry unless the project actually needs one.
+
 ## Why this split
 
 - Specialist agents and Codex receive English task briefs.

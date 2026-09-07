@@ -24,7 +24,9 @@ Outputs:
 Workflow:
 1. Resolve `paper_id` per multi-paper.md §4 (confirm even with a single registry entry).
 2. Address blocker/major findings first.
-3. Record substantive changes in the changelog.
-4. Do not weaken limitations or reframe exploratory findings as confirmatory.
-5. Re-run citation and result-ID traceability checks.
-6. Update Zone C with `current_phase: revision` and next action.
+3. For each finding choose correction, deletion, consolidation, or relocation, not only addition. Editorial findings (repetition, unnecessary terminology, misplaced detail) are resolved by moving or condensing, never by dropping a justified caveat.
+4. After all findings are resolved, pass over the whole manuscript so local fixes do not accumulate into repetitive prose or scattered caveats.
+5. Record substantive changes in the changelog.
+6. Do not weaken limitations or reframe exploratory findings as confirmatory.
+7. Re-run citation and result-ID traceability checks.
+8. Update Zone C with `current_phase: revision` and next action.

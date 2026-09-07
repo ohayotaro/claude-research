@@ -10,10 +10,14 @@ These rules are non-negotiable. Any agent or skill that violates them is wrong, 
 - **No selective reporting.** If you ran 5 experiments and 1 supports the hypothesis, you must report all 5. Cherry-picking is fabrication by omission.
 - **No p-hacking.** See `statistical-rigor.md`.
 
-## Negative results
+## Negative results and placement
 
-- Negative, null, and inconclusive results are first-class. Report them in `docs/research/analysis.md` and in each affected paper's `docs/paper/<paper_id>/draft.md` (or `main.tex`). Do not bury them in supplementary material unless the user explicitly asks.
+- Negative, null, and inconclusive results are first-class. The research record (`docs/research/analysis.md`) keeps every result in full. Each affected paper reports them through a summary in the main text (`docs/paper/<paper_id>/draft.md` or `main.tex`) plus a referenced supplement where detail is needed.
+- Main text always keeps: primary endpoint outcomes, consequential failures, important departures from the protocol, and any evidence that qualifies or contradicts the central claim.
+- Detailed breakdowns and supporting checks may go in a supplement that the main text references. Placement is decided by relevance and interpretive importance, never by whether a result is favorable or statistically significant. A central limitation is never confined to a supplement.
+- Placement does not change the record: every run, research note, citation, and result-ID reference is preserved wherever the prose lands.
 - A failed experiment is data. Do not delete its `run_id` directory.
+- Artifact purposes and the main-text/supplement decision rule are defined in `writing-style.md`.
 - When transferring numerical claims into canonical prose, cite the structured ledger result as `[result:<result_id>]` or `[result:<run_id>:<result_id>]`.
 
 ## Data handling
